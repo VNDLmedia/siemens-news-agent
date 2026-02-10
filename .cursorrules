@@ -1,0 +1,75 @@
+# News AI Agent - Cursor Rules
+
+## Rule 1: Session Summaries
+**Always create session summaries to document decisions and progress.**
+
+- Create a new session summary file in `/docs/session-summaries/` for each day you work on the project
+- File naming convention: `YYYY-MM-DD-topic.md` (e.g., `2026-02-09-mvp-setup.md`)
+- Only one summary per day - append to existing file if working on same day
+- Document:
+  - Key decisions made (technology choices, architecture patterns, feature priorities)
+  - Problems identified and solutions chosen
+  - Implementation details (structure, schemas, workflows)
+  - Best practices established
+  - Testing strategies
+  - Known limitations and issues
+  - Next steps and action items
+  - Related files and references
+
+**When to create/update summaries:**
+- At the end of each major milestone (e.g., completing MVP, adding new feature)
+- After important architectural decisions
+- When solving significant technical challenges
+- Before switching to a different feature area
+
+## Rule 2: Consult Session History
+**Always review session summaries before making changes or decisions.**
+
+- Before implementing new features, check `/docs/session-summaries/` for:
+  - Previous decisions that might affect current work
+  - Problems we've already solved (don't reinvent solutions)
+  - Established patterns and best practices
+  - Known limitations to avoid
+  - Architecture decisions that must be respected
+
+**Use session summaries to:**
+- Maintain consistency with previous decisions
+- Avoid contradicting earlier choices
+- Learn from past challenges and solutions
+- Follow established coding patterns
+- Reference previous implementations as examples
+
+**Example workflow:**
+1. User requests a new feature (e.g., "Add Slack integration")
+2. Read relevant session summaries (especially architecture and Phase 1 decisions)
+3. Check if similar integrations exist (e.g., email output channel pattern)
+4. Follow established patterns (separate workflow, credentials, error handling)
+5. Update session summary with new decisions
+
+## Additional Guidelines
+
+### Documentation Standards
+- Keep `README.md` files up-to-date with new features
+- Update `PROJECT-OVERVIEW.md` when architecture changes
+- Document all environment variables in `env.example`
+- Add inline comments for complex logic
+
+### Code Organization
+- Follow established directory structure
+- Keep workflows focused (one responsibility each)
+- Use PostgreSQL for state, not n8n execution data
+- Put all n8n-related files in `/n8n/` directory
+
+### Decision Making
+When facing unclear requirements:
+1. Check session summaries first
+2. Check `docs/problems.md` for known issues
+3. Reference `docs/requirements.pdf` for original specs
+4. If still unclear, ask user for clarification
+5. Document the decision in session summary
+
+### Git Practices
+- Don't commit `.env` files (use `.gitignore`)
+- Don't commit sensitive credentials
+- Keep Docker volumes out of version control
+- Use `/docs` for documentation (gitignored per user preference)
