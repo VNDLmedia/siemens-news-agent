@@ -74,6 +74,41 @@ services:
       timeout: 10s
       retries: 3
 
+  api:
+    build: ../api
+    container_name: news-agent-api
+    restart: unless-stopped
+    environment:
+      # Database connection
+      DATABASE_URL: postgresql://${POSTGRES_USER:-n8n}:${POSTGRES_PASSWORD:-n8n_password}@postgres:5432/${POSTGRES_DB:-news_agent}
+      
+      # n8n integration
+      N8N_WEBHOOK_BASE_URL: http://n8n:5678/webhook
+      
+      # API Security
+      API_KEY: ${API_KEY:-dev-api-key-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-min-32-characters-change-this}
+      
+      # API Configuration
+      HOST: 0.0.0.0
+      PORT: 3000
+      DEBUG: ${DEBUG:-true}
+      
+      # CORS
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5678"]'
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      n8n:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
     driver: local
