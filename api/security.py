@@ -1,34 +1,19 @@
-"""
-Authentication and security middleware
-"""
 from fastapi import Security, HTTPException, status
 from fastapi.security import APIKeyHeader
-from .config import settings
+from config import settings
 
-# API Key authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
-    """
-    Verify API key from request header
-    
-    Usage in routes:
-        @app.get("/protected")
-        async def protected_route(api_key: str = Depends(verify_api_key)):
-            # Route logic here
-    """
-    if api_key is None:
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if not api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing API Key. Include 'X-API-Key' header in your request.",
-            headers={"WWW-Authenticate": "ApiKey"},
+            detail="Missing API key. Please provide X-API-Key header."
         )
-    
-    if api_key != settings.API_KEY:
+    if api_key != settings.api_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid API Key",
+            detail="Invalid API key."
         )
-    
     return api_key

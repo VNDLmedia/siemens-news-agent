@@ -510,6 +510,54 @@
         1360,
         80
       ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-feeds",
+        "options": {}
+      },
+      "id": "webhook-scrape-feeds",
+      "name": "Webhook: Scrape Feeds",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        80
+      ],
+      "webhookId": "scrape-feeds-webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "summarize",
+        "options": {}
+      },
+      "id": "webhook-summarize",
+      "name": "Webhook: Summarize",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        480
+      ],
+      "webhookId": "summarize-webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-digest",
+        "options": {}
+      },
+      "id": "webhook-send-digest",
+      "name": "Webhook: Send Digest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        864
+      ],
+      "webhookId": "send-digest-webhook"
     }
   ],
   "pinData": {},
@@ -733,6 +781,49 @@
         [
           {
             "node": "Insert New Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Scrape Feeds": {
+      "main": [
+        [
+          {
+            "node": "Tagesschau",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Heise",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spiegel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Summarize": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unprocessed Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Send Digest": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unsent Articles",
             "type": "main",
             "index": 0
           }

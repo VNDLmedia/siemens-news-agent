@@ -1,1 +1,19 @@
-/docs
+# Environment variables (contains secrets!)
+.env
+
+# n8n data
+.n8n/
+
+# PostgreSQL data
+postgres_data/
+
+# Docker volumes
+volumes/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

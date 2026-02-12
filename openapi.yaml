@@ -1,0 +1,882 @@
+openapi: 3.1.0
+info:
+  title: News AI Agent API
+  description: "\n    News AI Agent REST API\n    \n    A production-ready API for\
+    \ managing RSS feeds, articles, and triggering AI-powered workflows.\n    \n \
+    \   ## Features\n    \n    - **Feed Management**: CRUD operations for RSS feed\
+    \ sources\n    - **Article Management**: Query and manage news articles\n    -\
+    \ **Workflow Actions**: Trigger n8n workflows for scraping, summarization, and\
+    \ email digests\n    - **System Monitoring**: Health checks and statistics\n \
+    \   \n    ## Authentication\n    \n    Most endpoints require an API key in the\
+    \ `X-API-Key` header.\n    The `/api/health` endpoint is public and does not require\
+    \ authentication.\n    \n    ## Documentation\n    \n    - **Swagger UI**: `/docs`\
+    \ - Interactive API documentation\n    - **ReDoc**: `/redoc` - Alternative documentation\
+    \ format\n    - **OpenAPI JSON**: `/openapi.json` - Machine-readable API specification\n\
+    \    "
+  version: 1.0.0
+paths:
+  /api/feeds:
+    post:
+      tags:
+      - Feed Management
+      summary: Create Feed Endpoint
+      description: Create a new RSS feed source.
+      operationId: create_feed_endpoint_api_feeds_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '400':
+          description: Feed with this URL already exists
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Feed Management
+      summary: List Feeds
+      description: List all RSS feed sources.
+      operationId: list_feeds_api_feeds_get
+      parameters:
+      - name: enabled_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Enabled Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feed'
+                title: Response List Feeds Api Feeds Get
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/feeds/{feed_id}:
+    get:
+      tags:
+      - Feed Management
+      summary: Get Feed
+      description: Get a specific RSS feed by ID.
+      operationId: get_feed_api_feeds__feed_id__get
+      parameters:
+      - name: feed_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Feed Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Feed not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Feed Management
+      summary: Update Feed Endpoint
+      description: Update an RSS feed.
+      operationId: update_feed_endpoint_api_feeds__feed_id__put
+      parameters:
+      - name: feed_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Feed Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Feed not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Feed Management
+      summary: Delete Feed Endpoint
+      description: Delete an RSS feed.
+      operationId: delete_feed_endpoint_api_feeds__feed_id__delete
+      parameters:
+      - name: feed_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Feed Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: Response Delete Feed Endpoint Api Feeds  Feed Id  Delete
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Feed not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/feeds/{feed_id}/toggle:
+    patch:
+      tags:
+      - Feed Management
+      summary: Toggle Feed
+      description: Toggle the enabled status of an RSS feed.
+      operationId: toggle_feed_api_feeds__feed_id__toggle_patch
+      parameters:
+      - name: feed_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Feed Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Feed not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles:
+    get:
+      tags:
+      - Article Management
+      summary: List Articles
+      description: List articles with optional filters.
+      operationId: list_articles_api_articles_get
+      parameters:
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by source name (partial match)
+          title: Source
+        description: Filter by source name (partial match)
+      - name: processed
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          description: Filter by processing status
+          title: Processed
+        description: Filter by processing status
+      - name: sent
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          description: Filter by sent status
+          title: Sent
+        description: Filter by sent status
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Maximum number of articles to return
+          default: 50
+          title: Limit
+        description: Maximum number of articles to return
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Number of articles to skip
+          default: 0
+          title: Offset
+        description: Number of articles to skip
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Article'
+                title: Response List Articles Api Articles Get
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles/{article_id}:
+    get:
+      tags:
+      - Article Management
+      summary: Get Article
+      description: Get a specific article by ID.
+      operationId: get_article_api_articles__article_id__get
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Article Management
+      summary: Delete Article Endpoint
+      description: Delete an article.
+      operationId: delete_article_endpoint_api_articles__article_id__delete
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: Response Delete Article Endpoint Api Articles  Article Id  Delete
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/actions/scrape:
+    post:
+      tags:
+      - Workflow Actions
+      summary: Trigger Scrape
+      description: Trigger RSS feed scraping workflow.
+      operationId: trigger_scrape_api_actions_scrape_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScrapeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/actions/summarize:
+    post:
+      tags:
+      - Workflow Actions
+      summary: Trigger Summarize
+      description: Trigger AI summarization workflow.
+      operationId: trigger_summarize_api_actions_summarize_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummarizeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/actions/send-digest:
+    post:
+      tags:
+      - Workflow Actions
+      summary: Trigger Send Digest
+      description: Trigger email digest sending workflow.
+      operationId: trigger_send_digest_api_actions_send_digest_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendDigestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/health:
+    get:
+      tags:
+      - System
+      summary: Health Check
+      description: Health check endpoint (no authentication required).
+      operationId: health_check_api_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security: []
+  /api/stats:
+    get:
+      tags:
+      - System
+      summary: Get Stats
+      description: Get system statistics.
+      operationId: get_stats_api_stats_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+  /:
+    get:
+      summary: Root
+      description: Root endpoint.
+      operationId: root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security: []
+components:
+  schemas:
+    Article:
+      properties:
+        id:
+          type: string
+          title: Id
+        title:
+          type: string
+          title: Title
+        url:
+          type: string
+          title: Url
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+        source:
+          type: string
+          title: Source
+        published_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Published At
+        summary_short:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary Short
+        summary_long:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary Long
+        processed:
+          type: boolean
+          title: Processed
+        sent:
+          type: boolean
+          title: Sent
+        fetched_at:
+          type: string
+          format: date-time
+          title: Fetched At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - title
+      - url
+      - content
+      - source
+      - published_at
+      - summary_short
+      - summary_long
+      - processed
+      - sent
+      - fetched_at
+      - created_at
+      - updated_at
+      title: Article
+    Feed:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        url:
+          type: string
+          maxLength: 2083
+          minLength: 1
+          format: uri
+          title: Url
+        language:
+          $ref: '#/components/schemas/FeedLanguage'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+        article_count:
+          type: integer
+          title: Article Count
+        last_fetched:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Fetched
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - name
+      - url
+      - language
+      - category
+      - enabled
+      - article_count
+      - last_fetched
+      - created_at
+      - updated_at
+      title: Feed
+    FeedCategory:
+      type: string
+      enum:
+      - general
+      - tech
+      - business
+      - politics
+      - science
+      - sports
+      - culture
+      title: FeedCategory
+    FeedCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Name
+        url:
+          type: string
+          maxLength: 2083
+          minLength: 1
+          format: uri
+          title: Url
+        language:
+          allOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          default: de
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      type: object
+      required:
+      - name
+      - url
+      title: FeedCreate
+    FeedLanguage:
+      type: string
+      enum:
+      - de
+      - en
+      - fr
+      - es
+      - it
+      title: FeedLanguage
+    FeedUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 1
+          - type: 'null'
+          title: Name
+        url:
+          anyOf:
+          - type: string
+            maxLength: 2083
+            minLength: 1
+            format: uri
+          - type: 'null'
+          title: Url
+        language:
+          anyOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          - type: 'null'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+      type: object
+      title: FeedUpdate
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        version:
+          type: string
+          title: Version
+        database:
+          type: string
+          title: Database
+        n8n:
+          type: string
+          title: N8N
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+      type: object
+      required:
+      - status
+      - version
+      - database
+      - n8n
+      - timestamp
+      title: HealthResponse
+    ScrapeRequest:
+      properties:
+        feed_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Feed Ids
+      type: object
+      title: ScrapeRequest
+    SendDigestRequest:
+      properties:
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+        force:
+          type: boolean
+          title: Force
+          default: false
+      type: object
+      title: SendDigestRequest
+    StatsResponse:
+      properties:
+        total_feeds:
+          type: integer
+          title: Total Feeds
+        active_feeds:
+          type: integer
+          title: Active Feeds
+        total_articles:
+          type: integer
+          title: Total Articles
+        processed_articles:
+          type: integer
+          title: Processed Articles
+        unsent_articles:
+          type: integer
+          title: Unsent Articles
+        last_scrape:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Scrape
+        last_summarization:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Summarization
+      type: object
+      required:
+      - total_feeds
+      - active_feeds
+      - total_articles
+      - processed_articles
+      - unsent_articles
+      - last_scrape
+      - last_summarization
+      title: StatsResponse
+    SuccessResponse:
+      properties:
+        success:
+          type: boolean
+          title: Success
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - success
+      - message
+      title: SuccessResponse
+    SummarizeRequest:
+      properties:
+        article_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Article Ids
+        limit:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 1.0
+          - type: 'null'
+          title: Limit
+          default: 10
+      type: object
+      title: SummarizeRequest
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    APIKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication. Get from your .env file.
+servers:
+- url: http://localhost:3000
+  description: Local development
+- url: https://api.example.com
+  description: Production (update this)
+security:
+- APIKeyHeader: []

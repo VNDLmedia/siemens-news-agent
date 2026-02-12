@@ -1,40 +1,29 @@
-"""
-Article management endpoints
-"""
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
-from ..models import Article, SuccessResponse
-from ..database import (
-    get_articles, get_article, delete_article
-)
-from ..security import verify_api_key
+from models import Article
+from database import get_articles, get_article_by_id, delete_article
+from security import verify_api_key
 
-router = APIRouter(prefix="/articles", tags=["Article Management"])
+router = APIRouter(prefix="/api/articles", tags=["Article Management"])
+
+# Standard error responses for contract documentation
+NOT_FOUND_RESPONSE = {404: {"description": "Article not found"}}
+AUTH_RESPONSES = {
+    401: {"description": "Missing API key"},
+    403: {"description": "Invalid API key"},
+}
 
 
-@router.get(
-    "/",
-    response_model=List[Article],
-    summary="List articles",
-    description="Get articles with optional filtering by source, processing status, and sent status."
-)
+@router.get("", response_model=List[Article], responses=AUTH_RESPONSES)
 async def list_articles(
-    source: Optional[str] = Query(None, description="Filter by source name"),
+    source: Optional[str] = Query(None, description="Filter by source name (partial match)"),
     processed: Optional[bool] = Query(None, description="Filter by processing status"),
     sent: Optional[bool] = Query(None, description="Filter by sent status"),
-    limit: int = Query(50, ge=1, le=500, description="Maximum results"),
-    offset: int = Query(0, ge=0, description="Results to skip (pagination)"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of articles to return"),
+    offset: int = Query(0, ge=0, description="Number of articles to skip"),
     api_key: str = Depends(verify_api_key)
-) -> List[Article]:
-    """
-    List articles with filtering and pagination.
-    
-    **Examples:**
-    - All articles: `GET /api/articles`
-    - Unprocessed articles: `GET /api/articles?processed=false`
-    - Ready to send: `GET /api/articles?processed=true&sent=false`
-    - Paginated: `GET /api/articles?limit=20&offset=40`
-    """
+):
+    """List articles with optional filters."""
     articles = await get_articles(
         source=source,
         processed=processed,
@@ -45,44 +34,31 @@ async def list_articles(
     return [Article(**article) for article in articles]
 
 
-@router.get(
-    "/{article_id}",
-    response_model=Article,
-    summary="Get article by ID",
-    description="Retrieve detailed information about a specific article."
-)
-async def get_article_by_id(
+@router.get("/{article_id}", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def get_article(
     article_id: str,
     api_key: str = Depends(verify_api_key)
-) -> Article:
-    """Get a specific article by its UUID."""
-    article = await get_article(article_id)
+):
+    """Get a specific article by ID."""
+    article = await get_article_by_id(article_id)
     if not article:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Article {article_id} not found"
+            detail="Article not found"
         )
     return Article(**article)
 
 
-@router.delete(
-    "/{article_id}",
-    response_model=SuccessResponse,
-    summary="Delete article",
-    description="Permanently delete an article from the database."
-)
-async def delete_article_by_id(
+@router.delete("/{article_id}", response_model=dict, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def delete_article_endpoint(
     article_id: str,
     api_key: str = Depends(verify_api_key)
-) -> SuccessResponse:
-    """Delete an article permanently."""
+):
+    """Delete an article."""
     success = await delete_article(article_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Article {article_id} not found"
+            detail="Article not found"
         )
-    
-    return SuccessResponse(
-        message=f"Article {article_id} deleted successfully"
-    )
+    return {"success": True, "message": "Article deleted successfully"}

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS rss_sources (
 );
 
 -- Indexes for RSS sources
+CREATE INDEX IF NOT EXISTS idx_rss_sources_url ON rss_sources(url);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_enabled ON rss_sources(enabled) WHERE enabled = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rss_sources_language ON rss_sources(language);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_category ON rss_sources(category);
@@ -63,11 +64,11 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Trigger to automatically update updated_at
+-- Trigger to automatically update updated_at for articles
 CREATE TRIGGER update_articles_updated_at BEFORE UPDATE ON articles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger for RSS sources updated_at
+-- Trigger to automatically update updated_at for rss_sources
 CREATE TRIGGER update_rss_sources_updated_at BEFORE UPDATE ON rss_sources
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

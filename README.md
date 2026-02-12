@@ -50,6 +50,10 @@ SMTP_FROM=News Agent <deine-email@gmail.com>
 
 # Empfänger Email
 RECIPIENT_EMAIL=deine-email@gmail.com
+
+# FastAPI Configuration
+API_KEY=dev-api-key-change-in-production
+SECRET_KEY=dev-secret-key-32-chars-minimum
 ```
 
 **Wichtig für Gmail:**
@@ -59,11 +63,11 @@ RECIPIENT_EMAIL=deine-email@gmail.com
 ### 2. Container starten
 
 ```bash
-cd n8n
 docker-compose up -d
 ```
 
 Die Container starten jetzt:
+- **FastAPI**: http://localhost:3000 (API + Docs)
 - **n8n**: http://localhost:5678
 - **PostgreSQL**: localhost:5432
 
@@ -78,13 +82,13 @@ docker-compose logs -f n8n
 docker-compose logs -f postgres
 ```
 
-### 3. n8n Dashboard öffnen
+### 3. n8n Dashboard öffnen & Owner Account erstellen
 
 Öffne deinen Browser und gehe zu: **http://localhost:5678**
 
-Login mit den Credentials aus deiner `.env` Datei:
-- Username: `admin` (oder was du gesetzt hast)
-- Password: dein `N8N_PASSWORD`
+Beim ersten Start:
+1. Erstelle deinen **Owner Account** (Email, Name, Passwort)
+2. Die Workflows werden **automatisch importiert** ✨
 
 ### 4. Credentials einrichten
 
@@ -110,21 +114,21 @@ n8n benötigt Credentials für externe Services. Gehe zu **Settings → Credenti
 - Password: dein `SMTP_PASSWORD`
 - Secure: `false` (für STARTTLS)
 
-### 5. Workflows importieren
+### 5. Workflows aktivieren
 
-Gehe zu **Workflows** und importiere die 3 JSON-Dateien aus dem `workflows/` Ordner:
+Der Hauptworkflow wurde **automatisch importiert** beim ersten Start! 🎉
 
-1. **01-rss-ingestion.json** - RSS Feed Abruf
-2. **02-summarization.json** - OpenAI Zusammenfassungen
-3. **03-email-digest.json** - Email Versand
+Gehe zu **Workflows** und du siehst:
+- **AI-news-agent** - Hauptworkflow (RSS Feed, Summarization, Email)
 
-**So importierst du:**
-1. Klicke auf **"Add workflow"** → **"Import from file"**
-2. Wähle die JSON-Datei aus
-3. Klicke **"Save"**
-4. Prüfe, ob alle Nodes korrekt verbunden sind
+**Aktiviere den Workflow:**
+1. Öffne den Workflow
+2. Klicke auf den **"Active"** Toggle oben rechts (muss grün sein)
+3. Prüfe, ob alle Nodes korrekt verbunden sind
 
-**Wichtig:** Stelle sicher, dass jede Workflow die richtigen Credentials verwendet (siehe Node-Settings).
+**Wichtig:** Stelle sicher, dass der Workflow die richtigen Credentials verwendet (siehe Node-Settings).
+
+**Hinweis:** Die REST API läuft jetzt als separater FastAPI-Service (nicht mehr als n8n Workflow).
 
 ## 🧪 Testing
 
@@ -316,6 +320,141 @@ telnet smtp.gmail.com 587
 Die Deduplizierung basiert auf der **URL**. Wenn verschiedene Feeds leicht unterschiedliche URLs haben (z.B. mit Tracking-Parametern), werden sie als unterschiedlich erkannt.
 
 **Lösung:** Erweitere die Deduplizierungs-Logik im Workflow 01.
+
+## 🌐 REST API
+
+Der News AI Agent bietet eine **production-ready REST API** mit FastAPI, um programmatisch mit dem System zu interagieren!
+
+### Quick Start
+
+1. **API startet automatisch!** ✨
+   - Starte Container: `docker compose up -d`
+   - API läuft auf: http://localhost:3000
+   - **Automatische Dokumentation**: http://localhost:3000/docs
+
+2. **API Docs ansehen:**
+   - **Swagger UI**: http://localhost:3000/docs (interaktiv, "Try it out" Buttons)
+   - **ReDoc**: http://localhost:3000/redoc (alternative Dokumentation)
+   - **OpenAPI JSON**: http://localhost:3000/openapi.json (für Postman/Insomnia)
+   - **OpenAPI YAML**: http://localhost:3000/openapi.yaml (für Postman/Insomnia)
+
+3. **Authentifizierung:**
+   - Die meisten Endpoints benötigen einen API Key im Header: `X-API-Key`
+   - Standard Dev Key: `dev-api-key-change-in-production` (in `.env` ändern!)
+   - `/api/health` ist öffentlich (keine Auth nötig)
+
+### API Endpoints
+
+#### Feed Management
+| Method | Endpoint | Beschreibung | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/feeds` | RSS Feed erstellen | ✅ |
+| GET | `/api/feeds` | Alle Feeds auflisten | ✅ |
+| GET | `/api/feeds/{id}` | Feed abrufen | ✅ |
+| PUT | `/api/feeds/{id}` | Feed aktualisieren | ✅ |
+| DELETE | `/api/feeds/{id}` | Feed löschen | ✅ |
+| PATCH | `/api/feeds/{id}/toggle` | Feed aktivieren/deaktivieren | ✅ |
+
+#### Article Management
+| Method | Endpoint | Beschreibung | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/articles` | Artikel auflisten (Filter: source, processed, sent, limit, offset) | ✅ |
+| GET | `/api/articles/{id}` | Artikel abrufen | ✅ |
+| DELETE | `/api/articles/{id}` | Artikel löschen | ✅ |
+
+#### Workflow Actions
+| Method | Endpoint | Beschreibung | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/actions/scrape` | RSS Scraping triggern | ✅ |
+| POST | `/api/actions/summarize` | AI Summarization triggern | ✅ |
+| POST | `/api/actions/send-digest` | Email Digest senden | ✅ |
+
+#### System
+| Method | Endpoint | Beschreibung | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/health` | Health Check | ❌ |
+| GET | `/api/stats` | System-Statistiken | ✅ |
+
+**Base URL:** `http://localhost:3000`
+
+### Beispiele
+
+```bash
+# Health Check (keine Auth)
+curl http://localhost:3000/api/health
+
+# Feeds auflisten
+curl -H "X-API-Key: dev-api-key-change-in-production" \
+  http://localhost:3000/api/feeds
+
+# Neuen Feed erstellen
+curl -X POST \
+  -H "X-API-Key: dev-api-key-change-in-production" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"TechCrunch","url":"https://feeds.feedburner.com/TechCrunch/","language":"en","category":"tech"}' \
+  http://localhost:3000/api/feeds
+
+# Unverarbeitete Artikel abrufen
+curl -H "X-API-Key: dev-api-key-change-in-production" \
+  "http://localhost:3000/api/articles?processed=false&limit=10"
+
+# RSS Scraping triggern
+curl -X POST \
+  -H "X-API-Key: dev-api-key-change-in-production" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  http://localhost:3000/api/actions/scrape
+
+# Statistiken abrufen
+curl -H "X-API-Key: dev-api-key-change-in-production" \
+  http://localhost:3000/api/stats
+```
+
+### Postman/Insomnia Import
+
+Die OpenAPI-Spezifikation kann in **JSON** oder **YAML** Format direkt importiert werden:
+
+```bash
+# Option 1: OpenAPI YAML herunterladen (empfohlen)
+curl http://localhost:3000/openapi.yaml > openapi.yaml
+
+# Option 2: OpenAPI JSON herunterladen
+curl http://localhost:3000/openapi.json > openapi.json
+
+# In Postman/Insomnia importieren
+# File → Import → openapi.yaml (oder openapi.json)
+```
+
+**Tipp:** Die OpenAPI-Spec wird **automatisch generiert** von FastAPI. Änderungen am Code sind sofort in der Spec sichtbar!
+
+### Python Beispiel
+
+```python
+import requests
+
+BASE_URL = "http://localhost:3000"
+API_KEY = "dev-api-key-change-in-production"
+
+headers = {"X-API-Key": API_KEY}
+
+# Feeds abrufen
+feeds = requests.get(f"{BASE_URL}/api/feeds", headers=headers).json()
+
+# Neuen Feed erstellen
+new_feed = requests.post(
+    f"{BASE_URL}/api/feeds",
+    headers=headers,
+    json={
+        "name": "Hacker News",
+        "url": "https://hnrss.org/frontpage",
+        "language": "en",
+        "category": "tech"
+    }
+).json()
+
+# Scraping triggern
+requests.post(f"{BASE_URL}/api/actions/scrape", headers=headers)
+```
 
 ## 📈 Nächste Schritte (Phase 2)
 

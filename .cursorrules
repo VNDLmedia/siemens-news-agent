@@ -49,16 +49,16 @@
 ## Additional Guidelines
 
 ### Documentation Standards
-- Keep `README.md` files up-to-date with new features
-- Update `PROJECT-OVERVIEW.md` when architecture changes
+- Keep `README.md` up-to-date with new features
 - Document all environment variables in `env.example`
 - Add inline comments for complex logic
+- **NEVER create .md documentation files (API docs, guides, tutorials, etc.) unless explicitly asked by the user**
+- Use machine-readable formats (OpenAPI, JSON) for API documentation instead
 
 ### Code Organization
 - Follow established directory structure
 - Keep workflows focused (one responsibility each)
 - Use PostgreSQL for state, not n8n execution data
-- Put all n8n-related files in `/n8n/` directory
 
 ### Decision Making
 When facing unclear requirements:
@@ -115,3 +115,12 @@ chore(deps): integrate Groq as OpenAI alternative
 refactor(email): simplify query parameters for n8n cloud
 build(docker): update PostgreSQL to version 15
 ```
+
+## Rule 4: No Unnecessary Documentation Files
+**Do NOT create markdown documentation files unless explicitly requested.**
+
+- ❌ Do NOT create: API.md, GUIDE.md, TUTORIAL.md, CONTRIBUTING.md, etc.
+- ✅ DO create: Machine-readable specs (openapi.yaml, swagger.json, postman collections)
+- ✅ DO update: Existing README.md when adding features
+- Exception: Session summaries (Rule 1) are still required for project continuity
+- User can view API docs via Swagger UI or import specs to Postman

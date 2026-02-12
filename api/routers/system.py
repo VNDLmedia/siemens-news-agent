@@ -1,87 +1,59 @@
-"""
-System endpoints - health, stats, monitoring
-"""
 from fastapi import APIRouter, Depends
-import httpx
-from ..models import HealthResponse, StatsResponse
-from ..database import get_stats
-from ..security import verify_api_key
-from ..config import settings
+from models import HealthResponse, StatsResponse
+from database import get_statistics, get_pool
+from security import verify_api_key
+from config import settings
 from datetime import datetime
+import httpx
+import logging
 
-router = APIRouter(tags=["System"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api", tags=["System"])
+
+# Standard error responses for contract documentation
+AUTH_RESPONSES = {
+    401: {"description": "Missing API key"},
+    403: {"description": "Invalid API key"},
+}
 
 
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Health check",
-    description="Check if API and dependent services are healthy. No authentication required."
-)
-async def health_check() -> HealthResponse:
-    """
-    Health check endpoint for monitoring and load balancers.
-    
-    Returns:
-    - API status
-    - Database connectivity
-    - n8n reachability
-    - Current timestamp
-    
-    **No authentication required** - designed for monitoring tools.
-    """
-    health = HealthResponse(
-        status="healthy",
-        version=settings.API_VERSION,
-        timestamp=datetime.utcnow()
-    )
-    
+@router.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint (no authentication required)."""
     # Check database
+    db_status = "disconnected"
     try:
-        from ..database import db
-        await db.fetch_val("SELECT 1")
-        health.database = "connected"
-    except Exception:
-        health.database = "disconnected"
-        health.status = "degraded"
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+            db_status = "connected"
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
     
     # Check n8n
+    n8n_status = "unreachable"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{settings.N8N_WEBHOOK_BASE_URL.replace('/webhook', '')}/healthz")
+            response = await client.get(f"{settings.n8n_webhook_base_url.replace('/webhook', '')}/healthz")
             if response.status_code == 200:
-                health.n8n = "reachable"
-            else:
-                health.n8n = "error"
-                health.status = "degraded"
-    except Exception:
-        health.n8n = "unreachable"
-        health.status = "degraded"
+                n8n_status = "reachable"
+    except Exception as e:
+        logger.error(f"n8n health check failed: {str(e)}")
     
-    return health
+    overall_status = "healthy" if db_status == "connected" else "degraded"
+    
+    return HealthResponse(
+        status=overall_status,
+        version=settings.api_version,
+        database=db_status,
+        n8n=n8n_status,
+        timestamp=datetime.utcnow()
+    )
 
 
-@router.get(
-    "/stats",
-    response_model=StatsResponse,
-    summary="System statistics",
-    description="Get overview statistics about feeds, articles, and system activity."
-)
-async def system_stats(
-    api_key: str = Depends(verify_api_key)
-) -> StatsResponse:
-    """
-    Get system statistics.
-    
-    Returns counts and metrics:
-    - Total and active feeds
-    - Total, processed, and unsent articles
-    - Last activity timestamps
-    
-    Useful for:
-    - Dashboard displays
-    - Monitoring system health
-    - Capacity planning
-    """
-    stats = await get_stats()
+@router.get("/stats", response_model=StatsResponse, responses=AUTH_RESPONSES)
+async def get_stats(api_key: str = Depends(verify_api_key)):
+    """Get system statistics."""
+    stats = await get_statistics()
     return StatsResponse(**stats)
