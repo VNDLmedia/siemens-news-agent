@@ -31,10 +31,7 @@ services:
       DB_POSTGRESDB_USER: ${POSTGRES_USER:-n8n}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-n8n_password}
       
-      # n8n Configuration
-      N8N_BASIC_AUTH_ACTIVE: true
-      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-admin123}
+      # n8n Host config
       N8N_HOST: ${N8N_HOST:-localhost}
       N8N_PORT: 5678
       N8N_PROTOCOL: http
@@ -52,12 +49,23 @@ services:
       # OpenAI API Key (for workflows)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       
-      # Email SMTP Settings (for workflows)
-      SMTP_HOST: ${SMTP_HOST}
+      # Mock mode - skip LLM calls for testing (set to "true" to enable)
+      LLM_MOCK_MODE: ${LLM_MOCK_MODE:-false}
+      
+      # Allow workflow expressions to access specific env vars
+      N8N_ALLOWED_EXPRESSION_ENV_VARS: "LLM_MOCK_MODE"
+      
+      # Email SMTP Settings (for credential provisioning)
+      # NOTE: Recipients are managed via API (POST /api/recipients), not env vars
+      SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      
+      # Credential provisioning variables
+      CRED_POSTGRES_DB: ${POSTGRES_DB:-news_agent}
+      CRED_POSTGRES_USER: ${POSTGRES_USER:-n8n}
+      CRED_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-n8n_password}
       
       # CORS
       N8N_CORS_ORIGIN: ${N8N_CORS_ORIGIN:-http://localhost:3000}
@@ -66,6 +74,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/workflows:ro
+      - ./scripts/provision-n8n.sh:/provision-n8n.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,24 +83,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      "sleep 5 &&
-      if [ ! -f /home/node/.n8n/.workflows-imported ]; then
-        echo 'First startup detected - importing workflows...' &&
-        n8n import:workflow --separate --input=/workflows/ &&
-        echo 'Workflows imported successfully!' &&
-        echo 'Activating workflows for webhooks...' &&
-        for wfid in $$(n8n list:workflow 2>/dev/null | cut -d'|' -f1); do
-          echo \"Activating workflow: $$wfid\" &&
-          n8n update:workflow --id=$$wfid --active=true 2>/dev/null;
-        done &&
-        touch /home/node/.n8n/.workflows-imported &&
-        echo 'Workflows activated!';
-      else
-        echo 'Workflows already imported - skipping';
-      fi &&
-      exec n8n start"
+    entrypoint: []
+    command: ["sh", "/provision-n8n.sh"]
 
   api:
     build: ./api
