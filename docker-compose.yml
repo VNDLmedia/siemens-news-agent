@@ -79,9 +79,15 @@ services:
       "sleep 5 &&
       if [ ! -f /home/node/.n8n/.workflows-imported ]; then
         echo 'First startup detected - importing workflows...' &&
-        n8n import:workflow --input=/workflows/AI-news-agent.json --separate &&
+        n8n import:workflow --separate --input=/workflows/ &&
+        echo 'Workflows imported successfully!' &&
+        echo 'Activating workflows for webhooks...' &&
+        for wfid in $$(n8n list:workflow 2>/dev/null | cut -d'|' -f1); do
+          echo \"Activating workflow: $$wfid\" &&
+          n8n update:workflow --id=$$wfid --active=true 2>/dev/null;
+        done &&
         touch /home/node/.n8n/.workflows-imported &&
-        echo 'Workflows imported successfully!';
+        echo 'Workflows activated!';
       else
         echo 'Workflows already imported - skipping';
       fi &&
@@ -104,7 +110,7 @@ services:
       n8n:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/api/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
