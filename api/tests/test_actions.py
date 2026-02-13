@@ -35,24 +35,82 @@ class TestScrapeActionContract:
 
 
 class TestSummarizeActionContract:
-    """Contract: POST /api/actions/summarize triggers summarization."""
+    """Contract: POST /api/actions/summarize triggers summarization.
+    
+    - limit: query parameter (0=all, default=10, max=1000)
+    - article_ids: body parameter (optional)
+    """
 
     @pytest.mark.asyncio
-    async def test_summarize_accepts_empty_body(self, client, valid_headers):
-        """Contract: Summarize action accepts empty request body."""
+    async def test_summarize_accepts_no_params(self, client, valid_headers):
+        """Contract: Summarize action accepts no params (uses default limit=10)."""
         response = await client.post(
             "/api/actions/summarize",
-            json={},
             headers=valid_headers
         )
         assert response.status_code != 422
 
     @pytest.mark.asyncio
-    async def test_summarize_accepts_parameters(self, client, valid_headers):
-        """Contract: Summarize action accepts optional parameters."""
+    async def test_summarize_accepts_article_ids_in_body(self, client, valid_headers):
+        """Contract: Summarize action accepts article_ids in body."""
         response = await client.post(
             "/api/actions/summarize",
-            json={"article_ids": ["id1"], "limit": 10},
+            json={"article_ids": ["id1", "id2"]},
+            headers=valid_headers
+        )
+        assert response.status_code != 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_accepts_limit_query_param(self, client, valid_headers):
+        """Contract: Summarize action accepts limit as query param."""
+        response = await client.post(
+            "/api/actions/summarize?limit=50",
+            headers=valid_headers
+        )
+        assert response.status_code != 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_accepts_limit_zero_for_all(self, client, valid_headers):
+        """Contract: Summarize action accepts limit=0 meaning 'process all'."""
+        response = await client.post(
+            "/api/actions/summarize?limit=0",
+            headers=valid_headers
+        )
+        assert response.status_code != 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_accepts_max_limit(self, client, valid_headers):
+        """Contract: Summarize action accepts limit up to 1000."""
+        response = await client.post(
+            "/api/actions/summarize?limit=1000",
+            headers=valid_headers
+        )
+        assert response.status_code != 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_rejects_limit_over_max(self, client, valid_headers):
+        """Contract: Summarize action rejects limit > 1000."""
+        response = await client.post(
+            "/api/actions/summarize?limit=1001",
+            headers=valid_headers
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_rejects_negative_limit(self, client, valid_headers):
+        """Contract: Summarize action rejects negative limit."""
+        response = await client.post(
+            "/api/actions/summarize?limit=-1",
+            headers=valid_headers
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_summarize_combines_query_and_body(self, client, valid_headers):
+        """Contract: Summarize action accepts both limit (query) and article_ids (body)."""
+        response = await client.post(
+            "/api/actions/summarize?limit=5",
+            json={"article_ids": ["id1"]},
             headers=valid_headers
         )
         assert response.status_code != 422
