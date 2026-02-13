@@ -1,0 +1,318 @@
+{
+  "name": "Scrape Feeds",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "59c190e0-b241-496e-97b4-db05de549121",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-feeds",
+        "options": {}
+      },
+      "id": "webhook-scrape-feeds",
+      "name": "Webhook: Scrape Feeds",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        80
+      ],
+      "webhookId": "scrape-feeds-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://www.tagesschau.de/xml/rss2/",
+        "options": {}
+      },
+      "id": "9f6202c0-8cf6-4e59-bb24-37703b69eb0c",
+      "name": "Tagesschau",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.heise.de/rss/heise-atom.xml",
+        "options": {}
+      },
+      "id": "ab7be0cf-f972-45d8-bb2f-9fcfe8b9869e",
+      "name": "Heise",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        688,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.spiegel.de/schlagzeilen/index.rss",
+        "options": {}
+      },
+      "id": "d9f99769-1a90-49f9-91a0-dcb89f77ab7f",
+      "name": "Spiegel",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        688,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "9dc5cd97-430c-4504-8c9c-02ebe850c924",
+      "name": "Merge Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT url FROM articles WHERE url = '{{ $json.link }}'",
+        "options": {}
+      },
+      "id": "a1f4b184-e450-4a47-8b15-8529855afb69",
+      "name": "Check if URL Exists",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1136,
+        -96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-new",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isEmpty"
+              }
+            },
+            {
+              "id": "ebbfe7e6-a1cb-4cca-8ffc-b0576a9e0b9a",
+              "leftValue": "={{ $json.link }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ff4fe58f-ec62-4817-a29d-48e665a6ad17",
+      "name": "Article already in Database?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO articles (url, title, content, source, published_at, processed, sent)\nVALUES ($1, $2, $3, $4, $5, false, false)\nON CONFLICT (url) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ $json.link }},{{ $json.title }},{{ $json.contentSnippet || $json.content }},{{ $json.creator || 'RSS Feed' }},{{ $json.pubDate || $json.isoDate }},false,false"
+        }
+      },
+      "id": "d03bb872-15e3-46f4-b0bb-717d655b3f87",
+      "name": "Insert New Article",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1664,
+        96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count new articles inserted\nconst newArticlesCount = $input.all().length;\n\nreturn {\n  json: {\n    timestamp: new Date().toISOString(),\n    new_articles: newArticlesCount,\n    message: `Successfully ingested ${newArticlesCount} new articles`\n  }\n};"
+      },
+      "id": "1d6c8a05-3b5c-4f08-b1cb-3854af236844",
+      "name": "Count New Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        96
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Tagesschau",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Heise",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spiegel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Scrape Feeds": {
+      "main": [
+        [
+          {
+            "node": "Tagesschau",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Heise",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spiegel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tagesschau": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Heise": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Spiegel": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Feeds": {
+      "main": [
+        [
+          {
+            "node": "Article already in Database?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Article already in Database?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Insert New Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert New Article": {
+      "main": [
+        [
+          {
+            "node": "Count New Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
