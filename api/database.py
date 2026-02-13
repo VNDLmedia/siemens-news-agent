@@ -192,6 +192,120 @@ async def delete_article(article_id: str) -> bool:
         return result == "DELETE 1"
 
 
+# Recipient operations
+async def create_recipient(email: str, name: Optional[str], enabled: bool) -> Dict[str, Any]:
+    """Create a new digest recipient."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO digest_recipients (email, name, enabled)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, name, enabled, created_at, updated_at
+            """,
+            email, name, enabled
+        )
+        return dict(row)
+
+
+async def get_recipients(enabled_only: bool = False) -> List[Dict[str, Any]]:
+    """Get all digest recipients."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        query = "SELECT * FROM digest_recipients"
+        if enabled_only:
+            query += " WHERE enabled = TRUE"
+        query += " ORDER BY created_at DESC"
+        rows = await conn.fetch(query)
+        return [dict(row) for row in rows]
+
+
+async def get_recipient_by_id(recipient_id: str) -> Optional[Dict[str, Any]]:
+    """Get a recipient by ID."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM digest_recipients WHERE id = $1",
+            recipient_id
+        )
+        return dict(row) if row else None
+
+
+async def update_recipient(recipient_id: str, **kwargs) -> Optional[Dict[str, Any]]:
+    """Update a recipient."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        updates = []
+        values = []
+        param_num = 1
+        
+        for key, value in kwargs.items():
+            if value is not None:
+                updates.append(f"{key} = ${param_num}")
+                values.append(value)
+                param_num += 1
+        
+        if not updates:
+            return await get_recipient_by_id(recipient_id)
+        
+        values.append(recipient_id)
+        query = f"""
+            UPDATE digest_recipients
+            SET {', '.join(updates)}, updated_at = NOW()
+            WHERE id = ${param_num}
+            RETURNING *
+        """
+        row = await conn.fetchrow(query, *values)
+        return dict(row) if row else None
+
+
+async def delete_recipient(recipient_id: str) -> bool:
+    """Delete a recipient."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM digest_recipients WHERE id = $1",
+            recipient_id
+        )
+        return result == "DELETE 1"
+
+
+async def toggle_recipient_enabled(recipient_id: str) -> Optional[Dict[str, Any]]:
+    """Toggle recipient enabled status."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE digest_recipients
+            SET enabled = NOT enabled, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            recipient_id
+        )
+        return dict(row) if row else None
+
+
+async def get_recipient_emails(recipient_ids: Optional[List[str]] = None) -> List[str]:
+    """Get email addresses for sending digests.
+    
+    If recipient_ids provided, get those specific recipients.
+    Otherwise, get all enabled recipients.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if recipient_ids:
+            rows = await conn.fetch(
+                "SELECT email FROM digest_recipients WHERE id = ANY($1) AND enabled = TRUE",
+                recipient_ids
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT email FROM digest_recipients WHERE enabled = TRUE"
+            )
+        return [row["email"] for row in rows]
+
+
 # Statistics
 async def get_statistics() -> Dict[str, Any]:
     """Get system statistics."""
@@ -218,10 +332,22 @@ async def get_statistics() -> Dict[str, Any]:
             """
         )
         
+        # Recipient stats
+        recipient_stats = await conn.fetchrow(
+            """
+            SELECT 
+                COUNT(*) as total_recipients,
+                COUNT(*) FILTER (WHERE enabled = TRUE) as enabled_recipients
+            FROM digest_recipients
+            """
+        )
+        
         return {
             "total_feeds": feed_stats["total_feeds"],
             "enabled_feeds": feed_stats["enabled_feeds"],
             "total_articles": article_stats["total_articles"],
             "processed_articles": article_stats["processed_articles"],
-            "sent_articles": article_stats["sent_articles"]
+            "sent_articles": article_stats["sent_articles"],
+            "total_recipients": recipient_stats["total_recipients"],
+            "enabled_recipients": recipient_stats["enabled_recipients"]
         }

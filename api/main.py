@@ -8,7 +8,7 @@ import yaml
 
 from config import settings
 from database import get_pool, close_pool
-from routers import feeds, articles, actions, system
+from routers import feeds, articles, actions, system, recipients
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -70,6 +70,7 @@ app.add_middleware(
 # Include routers
 app.include_router(feeds.router)
 app.include_router(articles.router)
+app.include_router(recipients.router)
 app.include_router(actions.router)
 app.include_router(system.router)
 

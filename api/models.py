@@ -44,14 +44,55 @@ class ScrapeRequest(BaseModel):
     feed_ids: Optional[List[str]] = None
 
 
-class SummarizeRequest(BaseModel):
+class SummarizeRequestBody(BaseModel):
+    """Optional body for summarize endpoint (article_ids only, limit is query param)."""
     article_ids: Optional[List[str]] = None
-    limit: Optional[int] = Field(10, ge=1, le=100)
 
 
 class SendDigestRequest(BaseModel):
-    email: Optional[str] = None
+    """Request to trigger email digest.
+    
+    - If recipient_ids provided: send only to those recipients
+    - If not provided: send to all enabled recipients from database
+    - force: send even if no new articles since last digest
+    """
+    recipient_ids: Optional[List[str]] = None
     force: bool = False
+
+
+# Recipient Models
+class RecipientCreate(BaseModel):
+    """Create a new digest recipient."""
+    email: str = Field(..., min_length=5, max_length=255, pattern=r'^[^@]+@[^@]+\.[^@]+$')
+    name: Optional[str] = Field(None, max_length=200)
+    enabled: bool = True
+
+
+class RecipientUpdate(BaseModel):
+    """Update an existing recipient."""
+    email: Optional[str] = Field(None, min_length=5, max_length=255, pattern=r'^[^@]+@[^@]+\.[^@]+$')
+    name: Optional[str] = Field(None, max_length=200)
+    enabled: Optional[bool] = None
+
+
+class Recipient(BaseModel):
+    """Digest recipient response model."""
+    id: str
+    email: str
+    name: Optional[str]
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
+    
+    class Config:
+        from_attributes = True
 
 
 # Response Models
@@ -118,6 +159,8 @@ class StatsResponse(BaseModel):
     total_articles: int
     processed_articles: int
     sent_articles: int
+    total_recipients: int
+    enabled_recipients: int
 
 
 class SuccessResponse(BaseModel):

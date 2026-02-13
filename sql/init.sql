@@ -104,3 +104,27 @@ COMMENT ON TABLE articles IS 'Stores all fetched news articles with their summar
 COMMENT ON COLUMN articles.url IS 'Unique URL of the article (used for deduplication)';
 COMMENT ON COLUMN articles.processed IS 'TRUE if article has been summarized by AI';
 COMMENT ON COLUMN articles.sent IS 'TRUE if article was included in an email digest';
+
+-- Digest Recipients table: Manages email recipients for news digests
+CREATE TABLE IF NOT EXISTS digest_recipients (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(200),
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for digest recipients
+CREATE INDEX IF NOT EXISTS idx_digest_recipients_email ON digest_recipients(email);
+CREATE INDEX IF NOT EXISTS idx_digest_recipients_enabled ON digest_recipients(enabled) WHERE enabled = TRUE;
+
+-- Trigger to automatically update updated_at for digest_recipients
+CREATE TRIGGER update_digest_recipients_updated_at BEFORE UPDATE ON digest_recipients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Table comments for digest_recipients
+COMMENT ON TABLE digest_recipients IS 'Email recipients for news digest distribution';
+COMMENT ON COLUMN digest_recipients.email IS 'Email address (can be individual or distribution list)';
+COMMENT ON COLUMN digest_recipients.name IS 'Display name for the recipient';
+COMMENT ON COLUMN digest_recipients.enabled IS 'TRUE if recipient should receive digests';
