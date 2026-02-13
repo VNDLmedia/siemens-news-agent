@@ -363,6 +363,210 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/recipients:
+    post:
+      tags:
+      - Recipient Management
+      summary: Add Recipient
+      description: Add a new email recipient for news digests. Can be an individual
+        email or a distribution list.
+      operationId: create_recipient_api_recipients_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipientCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '400':
+          description: Recipient with this email already exists
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Recipient Management
+      summary: List Recipients
+      description: List all digest recipients. Use enabled_only=true to filter to
+        active recipients.
+      operationId: list_recipients_api_recipients_get
+      parameters:
+      - name: enabled_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Enabled Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recipient'
+                title: Response List Recipients Api Recipients Get
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/recipients/{recipient_id}:
+    get:
+      tags:
+      - Recipient Management
+      summary: Get Recipient
+      description: Get a specific recipient by ID.
+      operationId: get_recipient_api_recipients__recipient_id__get
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Recipient Management
+      summary: Update Recipient
+      description: Update an existing recipient's email, name, or enabled status.
+      operationId: update_recipient_api_recipients__recipient_id__put
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipientUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Recipient Management
+      summary: Delete Recipient
+      description: Permanently remove a recipient from the system.
+      operationId: delete_recipient_api_recipients__recipient_id__delete
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/recipients/{recipient_id}/toggle:
+    patch:
+      tags:
+      - Recipient Management
+      summary: Toggle Recipient
+      description: Toggle a recipient's enabled status (enable/disable without deletion).
+      operationId: toggle_recipient_api_recipients__recipient_id__toggle_patch
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/actions/scrape:
     post:
       tags:
@@ -401,15 +605,34 @@ paths:
     post:
       tags:
       - Workflow Actions
-      summary: Trigger Summarize
-      description: Trigger AI summarization workflow.
+      summary: Trigger AI summarization
+      description: "Trigger the AI summarization workflow for unprocessed articles.\n\
+        \n**Limit parameter (query):**\n- `limit` not provided: processes default\
+        \ 10 articles\n- `limit=0`: processes ALL unprocessed articles  \n- `limit=N`:\
+        \ processes up to N articles (max 1000)\n\n**article_ids parameter (body):**\n\
+        - If provided, only summarize these specific articles (ignores limit)\n- If\
+        \ not provided, summarize oldest unprocessed articles up to limit"
       operationId: trigger_summarize_api_actions_summarize_post
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 1000
+            minimum: 0
+          - type: 'null'
+          description: Number of articles to process. 0 = all, default = 10
+          title: Limit
+        description: Number of articles to process. 0 = all, default = 10
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SummarizeRequest'
-        required: true
+              allOf:
+              - $ref: '#/components/schemas/Body_trigger_summarize_api_actions_summarize_post'
+              title: Body
       responses:
         '200':
           description: Successful Response
@@ -435,8 +658,24 @@ paths:
     post:
       tags:
       - Workflow Actions
-      summary: Trigger Send Digest
-      description: Trigger email digest sending workflow.
+      summary: Send Email Digest
+      description: 'Trigger the email digest workflow.
+
+
+        **Recipients:**
+
+        - Recipients are managed via `/api/recipients` endpoints
+
+        - All enabled recipients receive the digest by default
+
+        - Optionally pass `recipient_ids` to send to specific recipients only
+
+
+        **Force parameter:**
+
+        - `force=false` (default): only sends if there are unsent articles
+
+        - `force=true`: sends even if all articles were already sent'
       operationId: trigger_send_digest_api_actions_send_digest_post
       requestBody:
         content:
@@ -581,6 +820,18 @@ components:
       - created_at
       - updated_at
       title: Article
+    Body_trigger_summarize_api_actions_summarize_post:
+      properties:
+        article_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Article Ids
+          description: Specific article IDs to summarize (ignores limit if provided)
+      type: object
+      title: Body_trigger_summarize_api_actions_summarize_post
     Feed:
       properties:
         id:
@@ -751,6 +1002,87 @@ components:
       - n8n
       - timestamp
       title: HealthResponse
+    Recipient:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - enabled
+      - created_at
+      - updated_at
+      title: Recipient
+      description: Digest recipient response model.
+    RecipientCreate:
+      properties:
+        email:
+          type: string
+          maxLength: 255
+          minLength: 5
+          pattern: ^[^@]+@[^@]+\.[^@]+$
+          title: Email
+        name:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      type: object
+      required:
+      - email
+      title: RecipientCreate
+      description: Create a new digest recipient.
+    RecipientUpdate:
+      properties:
+        email:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 5
+            pattern: ^[^@]+@[^@]+\.[^@]+$
+          - type: 'null'
+          title: Email
+        name:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Name
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+      type: object
+      title: RecipientUpdate
+      description: Update an existing recipient.
     ScrapeRequest:
       properties:
         feed_ids:
@@ -764,55 +1096,59 @@ components:
       title: ScrapeRequest
     SendDigestRequest:
       properties:
-        email:
+        recipient_ids:
           anyOf:
-          - type: string
+          - items:
+              type: string
+            type: array
           - type: 'null'
-          title: Email
+          title: Recipient Ids
         force:
           type: boolean
           title: Force
           default: false
       type: object
       title: SendDigestRequest
+      description: 'Request to trigger email digest.
+
+
+        - If recipient_ids provided: send only to those recipients
+
+        - If not provided: send to all enabled recipients from database
+
+        - force: send even if no new articles since last digest'
     StatsResponse:
       properties:
         total_feeds:
           type: integer
           title: Total Feeds
-        active_feeds:
+        enabled_feeds:
           type: integer
-          title: Active Feeds
+          title: Enabled Feeds
         total_articles:
           type: integer
           title: Total Articles
         processed_articles:
           type: integer
           title: Processed Articles
-        unsent_articles:
+        sent_articles:
           type: integer
-          title: Unsent Articles
-        last_scrape:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Last Scrape
-        last_summarization:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Last Summarization
+          title: Sent Articles
+        total_recipients:
+          type: integer
+          title: Total Recipients
+        enabled_recipients:
+          type: integer
+          title: Enabled Recipients
       type: object
       required:
       - total_feeds
-      - active_feeds
+      - enabled_feeds
       - total_articles
       - processed_articles
-      - unsent_articles
-      - last_scrape
-      - last_summarization
+      - sent_articles
+      - total_recipients
+      - enabled_recipients
       title: StatsResponse
     SuccessResponse:
       properties:
@@ -827,25 +1163,6 @@ components:
       - success
       - message
       title: SuccessResponse
-    SummarizeRequest:
-      properties:
-        article_ids:
-          anyOf:
-          - items:
-              type: string
-            type: array
-          - type: 'null'
-          title: Article Ids
-        limit:
-          anyOf:
-          - type: integer
-            maximum: 100.0
-            minimum: 1.0
-          - type: 'null'
-          title: Limit
-          default: 10
-      type: object
-      title: SummarizeRequest
     ValidationError:
       properties:
         loc:
