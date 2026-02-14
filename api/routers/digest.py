@@ -37,33 +37,37 @@ def generate_digest_html(articles: list, include_sent: bool = False) -> str:
     
     article_count = len(articles)
     
+    # Siemens logo SVG as base64 data URI
+    logo_base64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDE2LjAuNCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjxzdmcgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjEwMDBweCINCgkgaGVpZ2h0PSIxNTlweCIgdmlld0JveD0iMCAwIDEwMDAgMTU5IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAxMDAwIDE1OTsiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPGcgaWQ9IkJvdW5kaW5nQm94Ij4NCgk8cG9seWdvbiBzdHlsZT0iZmlsbDpub25lOyIgcG9pbnRzPSIwLDE1OSAxMDAwLDE1OSAxMDAwLDAgMCwwIDAsMCAJIi8+DQo8L2c+DQo8ZyBpZD0iU0lFTUVOUyI+DQoJPGc+DQoJCTxwYXRoIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBkPSJNMy4wODYsMTUyLjUzN1YxMjIuNDYNCgkJCWMxNy4xMTksNS4zODgsMzIuMjY3LDguMDgyLDQ1LjQ0NCw4LjA4MmMxOC4xOTMsMCwyNy4yOTEtNC44MDksMjcuMjkxLTE0LjQyYzAtMy41ODMtMS4zMjQtNi41OTQtMy45NzgtOS4wMzINCgkJCWMtMi43MTQtMi41ODYtOS42NjUtNi4xNzEtMjAuODM1LTEwLjc2NGMtMjAuMDQyLTguMjQxLTMzLjExMS0xNS4yNjktMzkuMTktMjEuMDgyQzMuOTM5LDY3LjU3MSwwLDU3Ljg5NSwwLDQ2LjIwMg0KCQkJQzAsMzEuMTQ0LDUuNzQsMTkuNjY3LDE3LjIxMiwxMS43OEMyOC41NTcsMy45NjIsNDMuMzMsMC4wNTcsNjEuNTU0LDAuMDU3YzEwLjA0MSwwLDI0LjU3NCwxLjg0OCw0My41ODMsNS41NDl2MjguOTMzDQoJCQljLTE0LjE0NC01LjY1LTI3LjI3My04LjQ2OS0zOS40MDMtOC40NjljLTE3LjA4MSwwLTI1LjYyMSw0LjY5LTI1LjYyMSwxNC4wOTFjMCwzLjUxNCwxLjcyLDYuMzgsNS4xNjUsOC42MDINCgkJCWMyLjg2NSwxLjc5OCwxMC43NTksNS41OTYsMjMuNjY1LDExLjQwNmMxOC41ODMsOC4yNTMsMzAuOTU0LDE1LjQyNywzNy4xMTgsMjEuNTI5YzcuMzE0LDcuMjM4LDEwLjk3OCwxNi42MDQsMTAuOTc4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTc3LDI5LjA4OC0yMS41MjEsMzcuNzYxYy0xMS42MjEsNy4wMzMtMjYuNjksMTAuNTM1LTQ1LjE5OCwxMC41MzVDMzQuNjksMTU4LjA3OCwxOC45NDIsMTU2LjIzNywzLjA4NiwxNTIuNTM3DQoJCQlMMy4wODYsMTUyLjUzN3oiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMTQxLjA2MywyLjcwNCAxNDEuMDYzLDIuNzA0IDE4My42MDMsMi43MDQgDQoJCQkxODMuNjAzLDE1NS4wMDEgMTQxLjA2MywxNTUuMDAxIAkJIi8+DQoJCTxwb2x5Z29uIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBwb2ludHM9IjIyMi42MTYsMTU1LjAwMSAyMjIuNjE2LDIuNzA0IDMzMS43MjEsMi43MDQgDQoJCQkzMzEuNzIxLDMwLjI1IDI2My42MTYsMzAuMjUgMjYzLjYxNiw2NC42MzkgMzIyLjg5OCw2NC42MzkgMzIyLjg5OCw4OS43NjUgMjYzLjYxNiw4OS43NjUgMjYzLjYxNiwxMjUuOTA2IDMzMy40NzYsMTI1LjkwNiANCgkJCTMzMy40NzYsMTU1LjAwMSAyMjIuNjE2LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMzYxLjI0NywxNTUuMDAxIDM2MS4yNDcsMi43MDQgNDE2LjQwMiwyLjcwNCANCgkJCTQ1NC43MjEsMTAwLjAxNSA0OTQuMDAxLDIuNzA0IDU0Ni4zOSwyLjcwNCA1NDYuMzksMTU1LjAwMSA1MDYuMDU2LDE1NS4wMDEgNTA2LjA1Niw0Ny4xNzEgNDYxLjM5MiwxNTYuNTQ3IDQzNS4wMjMsMTU2LjU0NyANCgkJCTM5MS4yMTksNDcuMTcxIDM5MS4yMTksMTU1LjAwMSAzNjEuMjQ3LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNTg1LjQxMSwxNTUuMDAxIDU4NS40MTEsMi43MDQgNjk0LjUxNCwyLjcwNCANCgkJCTY5NC41MTQsMzAuMjUgNjI2LjQxNSwzMC4yNSA2MjYuNDE1LDY0LjYzOSA2ODUuNjk1LDY0LjYzOSA2ODUuNjk1LDg5Ljc2NSA2MjYuNDE1LDg5Ljc2NSA2MjYuNDE1LDEyNS45MDYgNjk2LjI4LDEyNS45MDYgDQoJCQk2OTYuMjgsMTU1LjAwMSA1ODUuNDExLDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNzI0LjI3MSwxNTUuMDAxIDcyNC4yNzEsMi43MDQgNzczLjU3NSwyLjcwNCANCgkJCTgyNS44ODMsMTA0LjY1NSA4MjUuODgzLDIuNzA0IDg1NS44NDcsMi43MDQgODU1Ljg0NywxNTUuMDAxIDgwNy45NDMsMTU1LjAwMSA3NTQuMjQ3LDUxLjY3OCA3NTQuMjQ3LDE1NS4wMDEgNzI0LjI3MSwxNTUuMDAxIAkJDQoJCQkiLz4NCgkJPHBhdGggc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIGQ9Ik04ODYuMDQ3LDE1Mi41MzdWMTIyLjQ2DQoJCQljMTYuOTc0LDUuMzg4LDMyLjEyLDguMDgyLDQ1LjQ1Miw4LjA4MmMxOC4xOTUsMCwyNy4yODItNC44MDksMjcuMjgyLTE0LjQyYzAtMy41ODMtMS4yODktNi41OTQtMy44NTQtOS4wMzINCgkJCWMtMi43MjgtMi41ODYtOS43MDgtNi4xNzEtMjAuOTQ1LTEwLjc2NGMtMTkuOTgyLTguMTczLTMzLjA2NC0xNS4xOTgtMzkuMTk5LTIxLjA4MmMtNy44NzUtNy42MDUtMTEuODA3LTE3LjMxNy0xMS44MDctMjkuMTQ2DQoJCQljMC0xNC45OTMsNS43MjYtMjYuNDMyLDE3LjIxLTM0LjMxOWMxMS4zMjgtNy44MTgsMjYuMTE4LTExLjcyMyw0NC4zNDQtMTEuNzIzYzEwLjI0NywwLDIzLjUyNSwxLjYyNywzOS44MSw0Ljg5NmwzLjc2MSwwLjY1Mw0KCQkJdjI4LjkzM2MtMTQuMTQ2LTUuNjUtMjcuMzEzLTguNDY5LTM5LjUwOC04LjQ2OWMtMTcuMDE2LDAtMjUuNTAzLDQuNjktMjUuNTAzLDE0LjA5MWMwLDMuNTE0LDEuNzExLDYuMzgsNS4xNDcsOC42MDINCgkJCWMyLjczLDEuNzI5LDEwLjY1Niw1LjUyOSwyMy43NzgsMTEuNDA2YzE4LjQ0Miw4LjI1MywzMC43ODcsMTUuNDI3LDM3LjAwNSwyMS41MjljNy4zMjUsNy4yMzgsMTAuOTgsMTYuNjA0LDEwLjk4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTM1LDI5LjA4OC0yMS40MDYsMzcuNzYxYy0xMS42ODksNy4wMzMtMjYuNzk2LDEwLjUzNS00NS4zMDEsMTAuNTM1DQoJCQlDOTE3LjY0NiwxNTguMDc4LDkwMS44OTEsMTU2LjIzNyw4ODYuMDQ3LDE1Mi41MzdMODg2LjA0NywxNTIuNTM3eiIvPg0KCTwvZz4NCjwvZz4NCjwvc3ZnPg0K"
+    
     html = f"""
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }}
-    h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
-    .article {{ margin-bottom: 30px; padding: 20px; background: #f9f9f9; border-left: 4px solid #3498db; }}
-    .article h2 {{ margin-top: 0; color: #2c3e50; }}
-    .article-meta {{ color: #7f8c8d; font-size: 0.9em; margin-bottom: 10px; }}
+    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #66667e; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f3f3f0; }}
+    .header {{ margin-bottom: 30px; padding-top: 30px; padding-bottom: 30px; border-bottom: 2px solid #009999; }}
+    .logo {{ max-width: 200px; height: auto; margin-top: 20px; margin-bottom: 25px; }}
+    h1 {{ color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em; }}
+    .article {{ margin-bottom: 30px; padding: 20px; background: #ebebee; border-left: 4px solid #009999; }}
+    .article h2 {{ margin-top: 0; color: #000028; font-weight: 700; }}
+    .article-meta {{ color: #9999a9; font-size: 0.9em; margin-bottom: 10px; }}
     .summary {{ margin: 15px 0; }}
-    .summary-short {{ font-weight: bold; color: #34495e; margin-bottom: 10px; }}
-    .summary-long {{ color: #555; }}
-    .read-more {{ display: inline-block; margin-top: 10px; color: #3498db; text-decoration: none; }}
-    .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #7f8c8d; font-size: 0.85em; text-align: center; }}
-    .preview-banner {{ background: #fff3cd; border: 1px solid #ffc107; padding: 10px 20px; margin-bottom: 20px; border-radius: 4px; }}
-    .preview-banner strong {{ color: #856404; }}
-    .no-articles {{ text-align: center; padding: 40px; color: #7f8c8d; }}
+    .summary-short {{ font-weight: 700; color: #000028; margin-bottom: 10px; }}
+    .summary-long {{ color: #66667e; }}
+    .read-more {{ display: inline-block; margin-top: 10px; color: #009999; text-decoration: none; font-weight: 600; }}
+    .read-more:hover {{ color: #00c1b6; }}
+    .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center; }}
+    .no-articles {{ text-align: center; padding: 40px; color: #9999a9; }}
   </style>
 </head>
 <body>
-  <div class="preview-banner">
-    <strong>📧 Preview Mode</strong> - This is how the email digest would look.
-    {"(Including already sent articles)" if include_sent else "(Only unsent articles)"}
+  <div class="header">
+    <img src="{logo_base64}" alt="Siemens" class="logo">
+    <h1>Dein News Digest - {date}</h1>
   </div>
-  <h1>📰 Dein News Digest - {date}</h1>
 """
 
     if article_count == 0:
@@ -98,20 +102,19 @@ def generate_digest_html(articles: list, include_sent: bool = False) -> str:
   <div class="article">
     <h2>{title}</h2>
     <div class="article-meta">
-      📅 {published_date} | 📰 {source}
+      {published_date} | {source}
     </div>
     <div class="summary">
-      <div class="summary-short">⚡ {summary_short}</div>
+      <div class="summary-short">{summary_short}</div>
       <div class="summary-long">{summary_long}</div>
     </div>
-    <a href="{url}" class="read-more" target="_blank">→ Weiterlesen</a>
+    <a href="{url}" class="read-more" target="_blank">Weiterlesen</a>
   </div>
 """
 
     html += """
   <div class="footer">
     <p>Dieser Digest wurde automatisch von deinem News AI Agent generiert.</p>
-    <p>Powered by n8n + OpenAI</p>
   </div>
 </body>
 </html>
