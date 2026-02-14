@@ -29,32 +29,26 @@ CREATE INDEX IF NOT EXISTS idx_rss_sources_category ON rss_sources(category);
 INSERT INTO rss_sources (name, url, language, category, enabled) VALUES
     -- 🇩🇪 German - General
     ('Tagesschau', 'https://www.tagesschau.de/xml/rss2/', 'de', 'general', TRUE),
-    ('Spiegel', 'https://www.spiegel.de/schlagzeilen/index.rss', 'de', 'general', TRUE),
     ('FAZ.NET Aktuell', 'https://www.faz.net/rss/aktuell', 'de', 'general', TRUE),
     ('Süddeutsche Zeitung Topthemen', 'https://rss.sueddeutsche.de/rss/Topthemen', 'de', 'general', TRUE),
-    ('ZEIT ONLINE News', 'https://newsfeed.zeit.de/index', 'de', 'general', TRUE),
-    -- 🇩🇪 German - Business
+     -- 🇩🇪 German - Business
     ('FAZ.NET Wirtschaft', 'https://www.faz.net/rss/aktuell/wirtschaft', 'de', 'business', TRUE),
     ('Süddeutsche Zeitung Wirtschaft', 'https://rss.sueddeutsche.de/rss/Wirtschaft', 'de', 'business', TRUE),
-    ('Handelsblatt Schlagzeilen', 'https://www.handelsblatt.com/contentexport/feed/schlagzeilen', 'de', 'business', TRUE),
-    ('Handelsblatt Finanzen', 'https://www.handelsblatt.com/contentexport/feed/finanzen', 'de', 'business', TRUE),
     ('WirtschaftsWoche', 'https://www.wiwo.de/contentexport/feed/rss/schlagzeilen', 'de', 'business', TRUE),
     ('Manager Magazin', 'https://www.manager-magazin.de/unternehmen/index.rss', 'de', 'business', TRUE),
     -- 🇩🇪 German - Tech
     ('Heise', 'https://www.heise.de/rss/heise-atom.xml', 'de', 'tech', TRUE),
     ('Golem.de IT-News', 'https://rss.golem.de/rss.php?feed=RSS2.0', 'de', 'tech', TRUE),
     ('t3n Magazin', 'https://t3n.de/rss.xml', 'de', 'tech', TRUE),
-    ('Handelsblatt Technik', 'https://www.handelsblatt.com/contentexport/feed/technik', 'de', 'tech', TRUE),
     -- 🇩🇪 German - Politics
     ('FAZ.NET Politik', 'https://www.faz.net/rss/aktuell/politik', 'de', 'politics', TRUE),
     ('ZEIT ONLINE Politik', 'https://newsfeed.zeit.de/politik', 'de', 'politics', TRUE),
-    ('Deutscher Bundestag', 'https://www.bundestag.de/static/rss/presse.xml', 'de', 'politics', TRUE),
     -- 🇬🇧 English - General
+    ('Google News', 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', 'en', 'general', TRUE),
     ('BBC News World', 'http://feeds.bbci.co.uk/news/world/rss.xml', 'en', 'general', TRUE),
     ('The Guardian World News', 'https://www.theguardian.com/world/rss', 'en', 'general', TRUE),
     ('The New York Times World', 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', 'en', 'general', TRUE),
     -- 🇬🇧 English - Business
-    ('Bloomberg Business', 'https://feeds.bloomberg.com/business/news.xml', 'en', 'business', TRUE),
     ('Wall Street Journal', 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'en', 'business', TRUE),
     ('CNBC Top News', 'https://www.cnbc.com/id/100003114/device/rss/rss.html', 'en', 'business', TRUE),
     ('The Economist Business', 'https://www.economist.com/business/rss.xml', 'en', 'business', TRUE),
@@ -67,10 +61,8 @@ INSERT INTO rss_sources (name, url, language, category, enabled) VALUES
     -- 🇬🇧 English - Science
     ('MIT Technology Review', 'https://www.technologyreview.com/feed/', 'en', 'science', TRUE),
     ('Nature News', 'http://www.nature.com/nature/current_issue/rss/', 'en', 'science', TRUE),
-    ('Science Daily', 'https://www.sciencedaily.com/rss/top_news.xml', 'en', 'science', TRUE),
     ('New Scientist', 'https://www.newscientist.com/feed/home/', 'en', 'science', TRUE),
     -- 🇬🇧 English - Politics
-    ('Politico', 'https://www.politico.com/rss/politics08.xml', 'en', 'politics', TRUE),
     ('Foreign Affairs', 'https://www.foreignaffairs.com/rss.xml', 'en', 'politics', TRUE)
 ON CONFLICT (url) DO NOTHING;
 
