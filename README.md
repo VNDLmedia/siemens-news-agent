@@ -365,9 +365,9 @@ Der News AI Agent bietet eine **production-ready REST API** mit FastAPI, um prog
 #### Workflow Actions
 | Method | Endpoint | Beschreibung | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/actions/scrape` | RSS Scraping triggern | ✅ |
-| POST | `/api/actions/summarize` | AI Summarization triggern | ✅ |
-| POST | `/api/actions/send-digest` | Email Digest senden | ✅ |
+| POST | `/api/workflows/scrape` | RSS Scraping triggern | ✅ |
+| POST | `/api/workflows/summarize` | AI Summarization triggern | ✅ |
+| POST | `/api/workflows/send-digest` | Email Digest senden | ✅ |
 
 #### System
 | Method | Endpoint | Beschreibung | Auth |
@@ -403,7 +403,7 @@ curl -X POST \
   -H "X-API-Key: dev-api-key-change-in-production" \
   -H "Content-Type: application/json" \
   -d '{}' \
-  http://localhost:3000/api/actions/scrape
+  http://localhost:3000/api/workflows/scrape
 
 # Statistiken abrufen
 curl -H "X-API-Key: dev-api-key-change-in-production" \
@@ -453,7 +453,7 @@ new_feed = requests.post(
 ).json()
 
 # Scraping triggern
-requests.post(f"{BASE_URL}/api/actions/scrape", headers=headers)
+requests.post(f"{BASE_URL}/api/workflows/scrape", headers=headers)
 ```
 
 ## 📈 Nächste Schritte (Phase 2)

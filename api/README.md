@@ -116,9 +116,9 @@ http://localhost:3000/api
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/actions/scrape` | Trigger RSS scraping |
-| `POST` | `/api/actions/summarize` | Trigger AI summarization |
-| `POST` | `/api/actions/send-digest` | Send email digest |
+| `POST` | `/api/workflows/scrape` | Trigger RSS scraping |
+| `POST` | `/api/workflows/summarize` | Trigger AI summarization |
+| `POST` | `/api/workflows/send-digest` | Send email digest |
 | `POST` | `/api/articles/{id}/summarize` | Summarize single article |
 
 #### 🔧 System
@@ -179,7 +179,7 @@ curl "http://localhost:3000/api/articles?processed=false&limit=20" \
 ### Trigger Scraping
 
 ```bash
-curl -X POST "http://localhost:3000/api/actions/scrape" \
+curl -X POST "http://localhost:3000/api/workflows/scrape" \
   -H "X-API-Key: dev-api-key-change-in-production" \
   -H "Content-Type: application/json" \
   -d '{}'
@@ -188,7 +188,7 @@ curl -X POST "http://localhost:3000/api/actions/scrape" \
 ### Trigger Summarization
 
 ```bash
-curl -X POST "http://localhost:3000/api/actions/summarize" \
+curl -X POST "http://localhost:3000/api/workflows/summarize" \
   -H "X-API-Key: dev-api-key-change-in-production" \
   -H "Content-Type: application/json" \
   -d '{

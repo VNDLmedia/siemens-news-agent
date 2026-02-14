@@ -5,13 +5,13 @@ info:
     \ managing RSS feeds, articles, and triggering AI-powered workflows.\n    \n \
     \   ## Features\n    \n    - **Feed Management**: CRUD operations for RSS feed\
     \ sources\n    - **Article Management**: Query and manage news articles\n    -\
-    \ **Workflow Actions**: Trigger n8n workflows for scraping, summarization, and\
-    \ email digests\n    - **System Monitoring**: Health checks and statistics\n \
-    \   \n    ## Authentication\n    \n    Most endpoints require an API key in the\
-    \ `X-API-Key` header.\n    The `/api/health` endpoint is public and does not require\
-    \ authentication.\n    \n    ## Documentation\n    \n    - **Swagger UI**: `/docs`\
-    \ - Interactive API documentation\n    - **ReDoc**: `/redoc` - Alternative documentation\
-    \ format\n    - **OpenAPI JSON**: `/openapi.json` - Machine-readable API specification\n\
+    \ **Workflows**: Trigger n8n workflows for scraping, summarization, and email\
+    \ digests\n    - **System Monitoring**: Health checks and statistics\n    \n \
+    \   ## Authentication\n    \n    Most endpoints require an API key in the `X-API-Key`\
+    \ header.\n    The `/api/health` endpoint is public and does not require authentication.\n\
+    \    \n    ## Documentation\n    \n    - **Swagger UI**: `/docs` - Interactive\
+    \ API documentation\n    - **ReDoc**: `/redoc` - Alternative documentation format\n\
+    \    - **OpenAPI JSON**: `/openapi.json` - Machine-readable API specification\n\
     \    "
   version: 1.0.0
 paths:
@@ -567,13 +567,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/actions/scrape:
+  /api/digest/preview:
+    get:
+      tags:
+      - Digest
+      summary: Preview Email Digest
+      description: 'Returns the HTML content that would be sent via email digest.
+
+
+        **Query Parameters:**
+
+        - `include_sent=false` (default): Only show unsent articles
+
+        - `include_sent=true`: Include already sent articles
+
+
+        This is useful for:
+
+        - Testing the email template
+
+        - Previewing content before sending
+
+        - Debugging digest generation'
+      operationId: preview_digest_api_digest_preview_get
+      parameters:
+      - name: include_sent
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Include articles that were already sent
+          default: false
+          title: Include Sent
+        description: Include articles that were already sent
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/digest/data:
+    get:
+      tags:
+      - Digest
+      summary: Get Digest Data
+      description: 'Returns the raw JSON data for articles that would be included
+        in the digest.
+
+
+        **Query Parameters:**
+
+        - `include_sent=false` (default): Only unsent articles
+
+        - `include_sent=true`: Include already sent articles
+
+
+        This is useful for:
+
+        - Building custom digest templates
+
+        - Integration with other systems
+
+        - Data analysis'
+      operationId: get_digest_data_api_digest_data_get
+      parameters:
+      - name: include_sent
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Include articles that were already sent
+          default: false
+          title: Include Sent
+        description: Include articles that were already sent
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestDataResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/workflows/scrape:
     post:
       tags:
-      - Workflow Actions
+      - Workflows
       summary: Trigger Scrape
       description: Trigger RSS feed scraping workflow.
-      operationId: trigger_scrape_api_actions_scrape_post
+      operationId: trigger_scrape_api_workflows_scrape_post
       requestBody:
         content:
           application/json:
@@ -601,10 +702,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/actions/summarize:
+  /api/workflows/summarize:
     post:
       tags:
-      - Workflow Actions
+      - Workflows
       summary: Trigger AI summarization
       description: "Trigger the AI summarization workflow for unprocessed articles.\n\
         \n**Limit parameter (query):**\n- `limit` not provided: processes default\
@@ -612,7 +713,7 @@ paths:
         \ processes up to N articles (max 1000)\n\n**article_ids parameter (body):**\n\
         - If provided, only summarize these specific articles (ignores limit)\n- If\
         \ not provided, summarize oldest unprocessed articles up to limit"
-      operationId: trigger_summarize_api_actions_summarize_post
+      operationId: trigger_summarize_api_workflows_summarize_post
       parameters:
       - name: limit
         in: query
@@ -631,7 +732,7 @@ paths:
           application/json:
             schema:
               allOf:
-              - $ref: '#/components/schemas/Body_trigger_summarize_api_actions_summarize_post'
+              - $ref: '#/components/schemas/Body_trigger_summarize_api_workflows_summarize_post'
               title: Body
       responses:
         '200':
@@ -654,10 +755,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/actions/send-digest:
+  /api/workflows/send-digest:
     post:
       tags:
-      - Workflow Actions
+      - Workflows
       summary: Send Email Digest
       description: 'Trigger the email digest workflow.
 
@@ -676,7 +777,7 @@ paths:
         - `force=false` (default): only sends if there are unsent articles
 
         - `force=true`: sends even if all articles were already sent'
-      operationId: trigger_send_digest_api_actions_send_digest_post
+      operationId: trigger_send_digest_api_workflows_send_digest_post
       requestBody:
         content:
           application/json:
@@ -739,8 +840,10 @@ paths:
           description: Invalid API key
   /:
     get:
+      tags:
+      - System
       summary: Root
-      description: Root endpoint.
+      description: Root endpoint with API information and documentation links.
       operationId: root__get
       responses:
         '200':
@@ -820,7 +923,7 @@ components:
       - created_at
       - updated_at
       title: Article
-    Body_trigger_summarize_api_actions_summarize_post:
+    Body_trigger_summarize_api_workflows_summarize_post:
       properties:
         article_ids:
           anyOf:
@@ -831,7 +934,72 @@ components:
           title: Article Ids
           description: Specific article IDs to summarize (ignores limit if provided)
       type: object
-      title: Body_trigger_summarize_api_actions_summarize_post
+      title: Body_trigger_summarize_api_workflows_summarize_post
+    DigestArticle:
+      properties:
+        id:
+          type: string
+          title: Id
+        title:
+          type: string
+          title: Title
+        url:
+          type: string
+          title: Url
+        source:
+          type: string
+          title: Source
+        published_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Published At
+        summary_short:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary Short
+        summary_long:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary Long
+        sent:
+          type: boolean
+          title: Sent
+      type: object
+      required:
+      - id
+      - title
+      - url
+      - source
+      - sent
+      title: DigestArticle
+      description: Article data as it appears in the digest.
+    DigestDataResponse:
+      properties:
+        article_count:
+          type: integer
+          title: Article Count
+        include_sent:
+          type: boolean
+          title: Include Sent
+        generated_at:
+          type: string
+          title: Generated At
+        articles:
+          items:
+            $ref: '#/components/schemas/DigestArticle'
+          type: array
+          title: Articles
+      type: object
+      required:
+      - article_count
+      - include_sent
+      - generated_at
+      - articles
+      title: DigestDataResponse
+      description: Response for digest data endpoint.
     Feed:
       properties:
         id:

@@ -8,7 +8,7 @@ import yaml
 
 from config import settings
 from database import get_pool, close_pool
-from routers import feeds, articles, actions, system, recipients
+from routers import feeds, articles, workflows, system, recipients, digest
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +41,7 @@ app = FastAPI(
     
     - **Feed Management**: CRUD operations for RSS feed sources
     - **Article Management**: Query and manage news articles
-    - **Workflow Actions**: Trigger n8n workflows for scraping, summarization, and email digests
+    - **Workflows**: Trigger n8n workflows for scraping, summarization, and email digests
     - **System Monitoring**: Health checks and statistics
     
     ## Authentication
@@ -71,13 +71,14 @@ app.add_middleware(
 app.include_router(feeds.router)
 app.include_router(articles.router)
 app.include_router(recipients.router)
-app.include_router(actions.router)
+app.include_router(digest.router)
+app.include_router(workflows.router)
 app.include_router(system.router)
 
 
-@app.get("/")
+@app.get("/", tags=["System"])
 async def root():
-    """Root endpoint."""
+    """Root endpoint with API information and documentation links."""
     return {
         "message": "News AI Agent API",
         "version": settings.api_version,

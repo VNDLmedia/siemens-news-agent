@@ -11,9 +11,9 @@ PROTECTED_ENDPOINTS = [
     ("GET", "/api/feeds"),
     ("POST", "/api/feeds"),
     ("GET", "/api/articles"),
-    ("POST", "/api/actions/scrape"),
-    ("POST", "/api/actions/summarize"),
-    ("POST", "/api/actions/send-digest"),
+    ("POST", "/api/workflows/scrape"),
+    ("POST", "/api/workflows/summarize"),
+    ("POST", "/api/workflows/send-digest"),
 ]
 
 

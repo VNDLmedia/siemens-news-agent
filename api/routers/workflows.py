@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/actions", tags=["Workflow Actions"])
+router = APIRouter(prefix="/api/workflows", tags=["Workflows"])
 
 # Standard error responses for contract documentation
 AUTH_RESPONSES = {

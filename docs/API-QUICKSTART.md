@@ -57,7 +57,7 @@ curl -X POST http://localhost:3000/api/feeds \
 ### 4. Trigger RSS Scraping
 
 ```bash
-curl -X POST http://localhost:3000/api/actions/scrape \
+curl -X POST http://localhost:3000/api/workflows/scrape \
   -H "X-API-Key: dev-api-key-change-in-production" \
   -H "Content-Type: application/json" \
   -d '{}'
@@ -101,10 +101,10 @@ You get:
 - `GET /api/articles/{id}` - Get specific article
 - `DELETE /api/articles/{id}` - Delete article
 
-### Workflow Actions
-- `POST /api/actions/scrape` - Fetch new articles
-- `POST /api/actions/summarize` - AI summarization
-- `POST /api/actions/send-digest` - Send email
+### Workflows
+- `POST /api/workflows/scrape` - Fetch new articles
+- `POST /api/workflows/summarize` - AI summarization
+- `POST /api/workflows/send-digest` - Send email
 
 ### System
 - `GET /api/health` - Health check
