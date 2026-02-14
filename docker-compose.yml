@@ -49,12 +49,6 @@ services:
       # OpenAI API Key (for workflows)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       
-      # Mock mode - skip LLM calls for testing (set to "true" to enable)
-      LLM_MOCK_MODE: ${LLM_MOCK_MODE:-false}
-      
-      # Allow workflow expressions to access specific env vars
-      N8N_ALLOWED_EXPRESSION_ENV_VARS: "LLM_MOCK_MODE"
-      
       # Email SMTP Settings (for credential provisioning)
       # NOTE: Recipients are managed via API (POST /api/recipients), not env vars
       SMTP_HOST: ${SMTP_HOST:-}
