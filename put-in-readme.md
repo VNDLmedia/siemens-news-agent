@@ -1,4 +1,4 @@
-* How to regenerate the openAPI.yml and how to import openAPI.yml in postman and use environment with api key in it
+* How to regenerate the openAPI.yml (script) and how to import openAPI.yml in postman and use environment with api key in it
 
 * which envs do what and where to get them
 
@@ -7,4 +7,8 @@
 * llm mock mode !
 
 * how to add email adresses/distributor as recipients
+
+* init.sql mit initialen feeds
+
+* interactive swagger UI
 
