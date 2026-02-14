@@ -126,6 +126,22 @@ async def toggle_feed_enabled(feed_id: str) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 
+async def set_feed_enabled(feed_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+    """Set feed enabled status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE rss_sources
+            SET enabled = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            feed_id, enabled
+        )
+        return dict(row) if row else None
+
+
 # Article operations
 async def get_articles(
     source: Optional[str] = None,

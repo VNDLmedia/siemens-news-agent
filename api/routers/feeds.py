@@ -3,7 +3,7 @@ from typing import List
 from models import Feed, FeedCreate, FeedUpdate
 from database import (
     create_feed, get_feeds, get_feed_by_id,
-    update_feed, delete_feed, toggle_feed_enabled
+    update_feed, delete_feed, toggle_feed_enabled, set_feed_enabled
 )
 from security import verify_api_key
 
@@ -120,6 +120,36 @@ async def toggle_feed(
 ):
     """Toggle the enabled status of an RSS feed."""
     result = await toggle_feed_enabled(feed_id)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feed not found"
+        )
+    return Feed(**result)
+
+
+@router.patch("/{feed_id}/enable", response_model=Feed, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def enable_feed(
+    feed_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Enable an RSS feed for scraping. Idempotent - safe to call multiple times."""
+    result = await set_feed_enabled(feed_id, enabled=True)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feed not found"
+        )
+    return Feed(**result)
+
+
+@router.patch("/{feed_id}/disable", response_model=Feed, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def disable_feed(
+    feed_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Disable an RSS feed from scraping. Idempotent - safe to call multiple times."""
+    result = await set_feed_enabled(feed_id, enabled=False)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

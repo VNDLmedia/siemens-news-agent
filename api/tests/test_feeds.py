@@ -169,3 +169,81 @@ class TestToggleFeedContract:
         response = await client.patch(f"/api/feeds/{created_feed['id']}/toggle", headers=valid_headers)
         assert response.status_code == 200
         assert response.json()["enabled"] != original_enabled
+
+
+class TestEnableFeedContract:
+    """Contract: PATCH /api/feeds/{id}/enable enables a feed."""
+
+    @pytest.mark.asyncio
+    async def test_enable_nonexistent_feed_returns_404(self, client, valid_headers):
+        """Contract: Enable nonexistent feed returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = await client.patch(f"/api/feeds/{fake_id}/enable", headers=valid_headers)
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_enable_feed_sets_enabled_true(self, client, valid_headers, sample_feed):
+        """Contract: Enable feed sets enabled=True."""
+        # Create a disabled feed
+        sample_feed["enabled"] = False
+        create_response = await client.post("/api/feeds", json=sample_feed, headers=valid_headers)
+        feed = create_response.json()
+        assert feed["enabled"] is False
+        
+        # Enable it
+        response = await client.patch(f"/api/feeds/{feed['id']}/enable", headers=valid_headers)
+        assert response.status_code == 200
+        assert response.json()["enabled"] is True
+        
+        # Cleanup
+        await client.delete(f"/api/feeds/{feed['id']}", headers=valid_headers)
+
+    @pytest.mark.asyncio
+    async def test_enable_feed_is_idempotent(self, client, valid_headers, created_feed):
+        """Contract: Enable is idempotent - calling twice results in same state."""
+        # Enable once
+        response1 = await client.patch(f"/api/feeds/{created_feed['id']}/enable", headers=valid_headers)
+        assert response1.status_code == 200
+        assert response1.json()["enabled"] is True
+        
+        # Enable again - should still be enabled
+        response2 = await client.patch(f"/api/feeds/{created_feed['id']}/enable", headers=valid_headers)
+        assert response2.status_code == 200
+        assert response2.json()["enabled"] is True
+
+
+class TestDisableFeedContract:
+    """Contract: PATCH /api/feeds/{id}/disable disables a feed."""
+
+    @pytest.mark.asyncio
+    async def test_disable_nonexistent_feed_returns_404(self, client, valid_headers):
+        """Contract: Disable nonexistent feed returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = await client.patch(f"/api/feeds/{fake_id}/disable", headers=valid_headers)
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_disable_feed_sets_enabled_false(self, client, valid_headers, created_feed):
+        """Contract: Disable feed sets enabled=False."""
+        # Feed starts enabled (default in created_feed fixture)
+        assert created_feed["enabled"] is True
+        
+        # Disable it
+        response = await client.patch(f"/api/feeds/{created_feed['id']}/disable", headers=valid_headers)
+        assert response.status_code == 200
+        assert response.json()["enabled"] is False
+
+    @pytest.mark.asyncio
+    async def test_disable_feed_is_idempotent(self, client, valid_headers, created_feed):
+        """Contract: Disable is idempotent - calling twice results in same state."""
+        # Disable once
+        response1 = await client.patch(f"/api/feeds/{created_feed['id']}/disable", headers=valid_headers)
+        assert response1.status_code == 200
+        assert response1.json()["enabled"] is False
+        
+        # Disable again - should still be disabled
+        response2 = await client.patch(f"/api/feeds/{created_feed['id']}/disable", headers=valid_headers)
+        assert response2.status_code == 200
+        assert response2.json()["enabled"] is False
