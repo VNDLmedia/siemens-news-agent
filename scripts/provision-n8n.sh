@@ -5,7 +5,6 @@
 # on first container startup
 # =====================================================
 
-# Don't use set -e - we want n8n to start even if provisioning has issues
 PROVISION_MARKER="/home/node/.n8n/.provisioned"
 
 # Check if already provisioned
@@ -30,7 +29,7 @@ echo "[1/5] Generating credentials from environment..."
 mkdir -p /tmp/creds
 
 # Postgres credential (always created)
-cat > /tmp/creds/postgres.json << 'EOFPG'
+cat > /tmp/creds/postgres.json << EOF
 {
   "id": "news-agent-postgres",
   "name": "News Agent DB",
@@ -38,32 +37,27 @@ cat > /tmp/creds/postgres.json << 'EOFPG'
   "data": {
     "host": "postgres",
     "port": 5432,
-    "database": "PLACEHOLDER_DB",
-    "user": "PLACEHOLDER_USER",
-    "password": "PLACEHOLDER_PASS",
+    "database": "${CRED_POSTGRES_DB:-news_agent}",
+    "user": "${CRED_POSTGRES_USER:-n8n}",
+    "password": "${CRED_POSTGRES_PASSWORD:-n8n_password}",
     "ssl": "disable"
   }
 }
-EOFPG
-# Replace placeholders with actual values
-sed -i "s/PLACEHOLDER_DB/${CRED_POSTGRES_DB:-news_agent}/g" /tmp/creds/postgres.json
-sed -i "s/PLACEHOLDER_USER/${CRED_POSTGRES_USER:-n8n}/g" /tmp/creds/postgres.json
-sed -i "s/PLACEHOLDER_PASS/${CRED_POSTGRES_PASSWORD:-n8n_password}/g" /tmp/creds/postgres.json
+EOF
 echo "  + Postgres credential"
 
 # OpenAI credential (only if API key provided)
 if [ -n "$OPENAI_API_KEY" ]; then
-    cat > /tmp/creds/openai.json << 'EOFAI'
+    cat > /tmp/creds/openai.json << EOF
 {
   "id": "news-agent-openai",
   "name": "OpenAI API",
   "type": "openAiApi",
   "data": {
-    "apiKey": "PLACEHOLDER_KEY"
+    "apiKey": "${OPENAI_API_KEY}"
   }
 }
-EOFAI
-    sed -i "s/PLACEHOLDER_KEY/${OPENAI_API_KEY}/g" /tmp/creds/openai.json
+EOF
     echo "  + OpenAI credential"
 else
     echo "  - OpenAI credential (OPENAI_API_KEY not set)"
@@ -71,24 +65,20 @@ fi
 
 # SMTP credential (only if host provided)
 if [ -n "$SMTP_HOST" ]; then
-    cat > /tmp/creds/smtp.json << 'EOFSMTP'
+    cat > /tmp/creds/smtp.json << EOF
 {
   "id": "news-agent-smtp",
   "name": "Email SMTP",
   "type": "smtp",
   "data": {
-    "host": "PLACEHOLDER_HOST",
-    "port": 587,
-    "user": "PLACEHOLDER_USER",
-    "password": "PLACEHOLDER_PASS",
+    "host": "${SMTP_HOST}",
+    "port": ${SMTP_PORT:-587},
+    "user": "${SMTP_USER}",
+    "password": "${SMTP_PASSWORD}",
     "secure": false
   }
 }
-EOFSMTP
-    sed -i "s/PLACEHOLDER_HOST/${SMTP_HOST}/g" /tmp/creds/smtp.json
-    sed -i "s/587/${SMTP_PORT:-587}/g" /tmp/creds/smtp.json
-    sed -i "s/PLACEHOLDER_USER/${SMTP_USER}/g" /tmp/creds/smtp.json
-    sed -i "s/PLACEHOLDER_PASS/${SMTP_PASSWORD}/g" /tmp/creds/smtp.json
+EOF
     echo "  + SMTP credential"
 else
     echo "  - SMTP credential (SMTP_HOST not set)"
@@ -96,17 +86,16 @@ fi
 
 # Telegram credential (only if access token provided)
 if [ -n "$TELEGRAM_ACCESS_TOKEN" ]; then
-    cat > /tmp/creds/telegram.json << 'EOFTG'
+    cat > /tmp/creds/telegram.json << EOF
 {
   "id": "news-agent-telegram",
   "name": "Telegram Bot",
   "type": "telegramApi",
   "data": {
-    "accessToken": "PLACEHOLDER_TOKEN"
+    "accessToken": "${TELEGRAM_ACCESS_TOKEN}"
   }
 }
-EOFTG
-    sed -i "s/PLACEHOLDER_TOKEN/${TELEGRAM_ACCESS_TOKEN}/g" /tmp/creds/telegram.json
+EOF
     echo "  + Telegram credential"
 else
     echo "  - Telegram credential (TELEGRAM_ACCESS_TOKEN not set)"
@@ -138,26 +127,61 @@ else
     echo "WARNING: No workflow files found or copy failed"
 fi
 
-# Rewrite credential references in all workflow files
-# Uses simple patterns compatible with busybox sed
+# Use Node.js to rewrite credential IDs in workflow JSON files
+# This is reliable for multi-line JSON unlike sed
 for wf in /tmp/workflows/*.json; do
     [ -f "$wf" ] || continue
     
     filename=$(basename "$wf")
     echo "  Processing: $filename"
     
-    # Create temp file for sed operations
-    # OpenAI credentials -> news-agent-openai
-    sed 's/"openAiApi": {[^}]*"id": "[^"]*"/"openAiApi": { "id": "news-agent-openai"/g' "$wf" > "$wf.tmp" && mv "$wf.tmp" "$wf"
+    # Node.js script to replace credential IDs
+    node -e "
+const fs = require('fs');
+const file = process.argv[1];
+let content = fs.readFileSync(file, 'utf8');
+let data;
+try {
+    data = JSON.parse(content);
+} catch (e) {
+    console.error('  Warning: Could not parse', file);
+    process.exit(0);
+}
+
+// Credential ID mapping
+const credMap = {
+    'openAiApi': 'news-agent-openai',
+    'postgres': 'news-agent-postgres',
+    'smtp': 'news-agent-smtp',
+    'telegramApi': 'news-agent-telegram'
+};
+
+// Recursively find and update credential references
+function updateCredentials(obj) {
+    if (!obj || typeof obj !== 'object') return;
     
-    # Postgres credentials -> news-agent-postgres  
-    sed 's/"postgres": {[^}]*"id": "[^"]*"/"postgres": { "id": "news-agent-postgres"/g' "$wf" > "$wf.tmp" && mv "$wf.tmp" "$wf"
+    if (obj.credentials && typeof obj.credentials === 'object') {
+        for (const [credType, credInfo] of Object.entries(obj.credentials)) {
+            if (credMap[credType] && credInfo && typeof credInfo === 'object') {
+                credInfo.id = credMap[credType];
+            }
+        }
+    }
     
-    # SMTP credentials -> news-agent-smtp
-    sed 's/"smtp": {[^}]*"id": "[^"]*"/"smtp": { "id": "news-agent-smtp"/g' "$wf" > "$wf.tmp" && mv "$wf.tmp" "$wf"
-    
-    # Telegram credentials -> news-agent-telegram
-    sed 's/"telegramApi": {[^}]*"id": "[^"]*"/"telegramApi": { "id": "news-agent-telegram"/g' "$wf" > "$wf.tmp" && mv "$wf.tmp" "$wf"
+    // Recurse into arrays and objects
+    for (const value of Object.values(obj)) {
+        if (Array.isArray(value)) {
+            value.forEach(updateCredentials);
+        } else if (typeof value === 'object') {
+            updateCredentials(value);
+        }
+    }
+}
+
+updateCredentials(data);
+fs.writeFileSync(file, JSON.stringify(data, null, 2));
+console.log('    Credentials remapped');
+" "$wf"
 done
 
 echo "Credential mappings applied!"
@@ -179,7 +203,6 @@ rm -rf /tmp/workflows
 # =====================================================
 echo ""
 echo "[5/5] Activating workflows..."
-# Give n8n a moment to register workflows
 sleep 2
 workflow_list=$(n8n list:workflow 2>/dev/null || echo "")
 if [ -n "$workflow_list" ]; then
@@ -202,5 +225,5 @@ echo "========================================"
 echo "Provisioning complete! Starting n8n..."
 echo "========================================"
 
-# Start n8n - this is critical, must always run
+# Start n8n
 exec n8n start
