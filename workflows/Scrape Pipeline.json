@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All\n                       │\n                       ▼\n               Daten vorhanden?\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- ⏰ Schedule: Alle 15 Min\n- 🔗 Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel",
+        "height": 560,
+        "width": 320
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -50
+      ]
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [
             {
@@ -144,8 +159,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "NORMALIZE_WORKFLOW_ID",
+          "value": "6AGSjWYEJDPHqgvJ",
           "mode": "list",
+          "cachedResultUrl": "/workflow/6AGSjWYEJDPHqgvJ",
           "cachedResultName": "Normalize Articles"
         },
         "workflowInputs": {
@@ -243,11 +259,6 @@
             "node": "Call RSS Feeds Scraper",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge All",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -264,16 +275,11 @@
             "node": "Call RSS Feeds Scraper",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge All",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
     },
-    "Google News": {
+    "Call Google News Scraper": {
       "main": [
         [
           {
@@ -284,7 +290,7 @@
         ]
       ]
     },
-    "RSS Feeds": {
+    "Call RSS Feeds Scraper": {
       "main": [
         [
           {

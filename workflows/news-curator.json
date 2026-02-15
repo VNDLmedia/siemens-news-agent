@@ -1,0 +1,382 @@
+{
+  "name": "CURATOR: News Curator",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "usecase",
+              "type": "string"
+            },
+            {
+              "name": "topic",
+              "type": "string"
+            },
+            {
+              "name": "max_articles",
+              "type": "number"
+            },
+            {
+              "name": "days_back",
+              "type": "number"
+            },
+            {
+              "name": "language",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "curator-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "curate-news",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "curator-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        600
+      ],
+      "webhookId": "curate-news-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "parse-usecase",
+              "name": "usecase",
+              "value": "={{ $json.usecase || $json.body?.usecase || 'daily_newsletter' }}",
+              "type": "string"
+            },
+            {
+              "id": "parse-topic",
+              "name": "topic",
+              "value": "={{ $json.topic || $json.body?.topic || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "parse-max",
+              "name": "max_articles",
+              "value": "={{ $json.max_articles || $json.body?.max_articles || 10 }}",
+              "type": "number"
+            },
+            {
+              "id": "parse-days",
+              "name": "days_back",
+              "value": "={{ $json.days_back || $json.body?.days_back || 1 }}",
+              "type": "number"
+            },
+            {
+              "id": "parse-language",
+              "name": "language",
+              "value": "={{ $json.language || $json.body?.language || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-inputs",
+      "name": "Parse Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        504,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  url,\n  title,\n  content,\n  source,\n  source_type,\n  published_at,\n  summary,\n  sentiment,\n  sentiment_score,\n  priority,\n  priority_reason,\n  topics,\n  keywords,\n  companies,\n  persons,\n  regions,\n  language,\n  category\nFROM articles \nWHERE \n  processed = TRUE\n  AND fetched_at >= NOW() - INTERVAL '1 day' * $1\n  AND ($2 = '' OR language = $2)\n  AND (\n    $3 = '' \n    OR title ILIKE '%' || $3 || '%'\n    OR content ILIKE '%' || $3 || '%'\n    OR $3 = ANY(topics)\n    OR $3 = ANY(keywords)\n    OR $3 = ANY(companies)\n  )\nORDER BY \n  CASE priority \n    WHEN 'high' THEN 1 \n    WHEN 'medium' THEN 2 \n    ELSE 3 \n  END,\n  published_at DESC\nLIMIT 50",
+        "options": {
+          "queryReplacement": "={{ $json.days_back }}, {{ $json.language }}, {{ $json.topic }}"
+        }
+      },
+      "id": "fetch-candidate-articles",
+      "name": "Fetch Candidate Articles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        728,
+        500
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-articles",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-articles-exist",
+      "name": "Check Articles Exist",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        952,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Collect all candidate articles and prepare for GPT curation\nconst articles = $input.all();\nconst params = $('Parse Inputs').first().json;\n\n// Create a condensed version for GPT (avoid token overload)\nconst articleSummaries = articles.map((item, idx) => {\n  const a = item.json;\n  return {\n    index: idx,\n    id: a.id,\n    title: a.title,\n    source: a.source,\n    published_at: a.published_at,\n    summary: a.summary ? a.summary.substring(0, 300) : '',\n    sentiment: a.sentiment,\n    priority: a.priority,\n    topics: a.topics || [],\n    keywords: a.keywords || [],\n    companies: a.companies || [],\n    category: a.category\n  };\n});\n\n// Build usecase description for GPT\nlet usecasePrompt = '';\nswitch(params.usecase) {\n  case 'daily_newsletter':\n    usecasePrompt = `Wähle die ${params.max_articles} wichtigsten und vielfältigsten Artikel für einen täglichen Newsletter aus. Achte auf:\n- Relevanz und Aktualität\n- Thematische Vielfalt (nicht nur ein Thema)\n- Mix aus verschiedenen Quellen\n- Priorität auf high-priority Artikel`;\n    break;\n  case 'topic_deep_dive':\n    usecasePrompt = `Wähle die ${params.max_articles} besten Artikel für einen Deep-Dive zum Thema \"${params.topic}\" aus. Achte auf:\n- Direkte Relevanz zum Thema\n- Verschiedene Perspektiven\n- Sowohl aktuelle News als auch Hintergrund\n- Qualität der Quellen`;\n    break;\n  case 'breaking_news':\n    usecasePrompt = `Wähle die ${params.max_articles} aktuellsten und wichtigsten Breaking News aus. Achte auf:\n- Nur sehr aktuelle Artikel (letzte Stunden)\n- Hohe Nachrichtenwerte (Relevanz, Impact)\n- High-priority Artikel bevorzugen\n- Keine Duplikate/ähnliche Stories`;\n    break;\n  case 'social_media':\n    usecasePrompt = `Wähle die ${params.max_articles} besten Artikel für Social Media Posts aus. Achte auf:\n- Interessante/teilbare Stories\n- Kontroverse oder überraschende Themen\n- Klare Headlines\n- Engagement-Potenzial`;\n    break;\n  case 'executive_briefing':\n    usecasePrompt = `Wähle die ${params.max_articles} wichtigsten Artikel für ein Executive Briefing aus. Achte auf:\n- Business-Relevanz\n- Strategische Themen\n- Markt- und Wettbewerbsnews\n- Nur high-quality Quellen`;\n    break;\n  default:\n    usecasePrompt = `Wähle die ${params.max_articles} besten Artikel basierend auf: ${params.usecase}. \nTopic-Filter: ${params.topic || 'keiner'}`;\n}\n\nreturn {\n  json: {\n    usecase: params.usecase,\n    topic: params.topic,\n    max_articles: params.max_articles,\n    usecase_prompt: usecasePrompt,\n    candidate_count: articles.length,\n    candidates: articleSummaries,\n    full_articles: articles.map(a => a.json)\n  }\n};"
+      },
+      "id": "prepare-for-curation",
+      "name": "Prepare for Curation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1176,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Du bist ein erfahrener News-Kurator. Deine Aufgabe ist es, aus einer Liste von Artikeln die besten für einen bestimmten Use-Case auszuwählen.\n\nANTWORTE NUR MIT EINEM JSON ARRAY der ausgewählten Artikel-Indices. Keine Erklärungen, kein anderer Text.\n\nFormat: [0, 3, 7, 12, 5]\n\nDie Zahlen sind die Index-Nummern der Artikel aus der Kandidatenliste."
+            },
+            {
+              "content": "=USE-CASE:\n{{ $json.usecase_prompt }}\n\nKANDIDATEN ({{ $json.candidate_count }} Artikel):\n{{ JSON.stringify($json.candidates, null, 2) }}\n\nWähle maximal {{ $json.max_articles }} Artikel aus und gib ihre Indices als JSON Array zurück."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.3
+        }
+      },
+      "id": "gpt-curate",
+      "name": "GPT Curate Selection",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1400,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "ZUFeCKTYUWusW7hp",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse GPT response and extract selected articles\nconst input = $input.first().json;\nconst preparationData = $('Prepare for Curation').first().json;\n\ntry {\n  // Extract the JSON array from GPT response (OpenAI node format)\n  let responseText = input.choices?.[0]?.message?.content || input.message?.content || input.content || input.text || '';\n  \n  // Clean up the response (remove markdown code blocks if present)\n  responseText = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Parse the indices array\n  const selectedIndices = JSON.parse(responseText);\n  \n  if (!Array.isArray(selectedIndices)) {\n    throw new Error('GPT response is not an array');\n  }\n  \n  // Get the full article data for selected indices\n  const fullArticles = preparationData.full_articles;\n  const curatedArticles = selectedIndices\n    .filter(idx => idx >= 0 && idx < fullArticles.length)\n    .map((idx, rank) => {\n      const article = fullArticles[idx];\n      return {\n        ...article,\n        curation_rank: rank + 1,\n        curation_reason: `Selected for ${preparationData.usecase}`\n      };\n    });\n  \n  return {\n    json: {\n      success: true,\n      usecase: preparationData.usecase,\n      topic: preparationData.topic,\n      total_candidates: preparationData.candidate_count,\n      curated_count: curatedArticles.length,\n      curated_articles: curatedArticles,\n      article_ids: curatedArticles.map(a => a.id)\n    }\n  };\n} catch (error) {\n  // Fallback: return top articles by priority\n  const fullArticles = preparationData.full_articles;\n  const fallbackArticles = fullArticles\n    .slice(0, preparationData.max_articles)\n    .map((article, idx) => ({\n      ...article,\n      curation_rank: idx + 1,\n      curation_reason: 'Fallback selection by priority'\n    }));\n  \n  return {\n    json: {\n      success: true,\n      usecase: preparationData.usecase,\n      topic: preparationData.topic,\n      total_candidates: preparationData.candidate_count,\n      curated_count: fallbackArticles.length,\n      curated_articles: fallbackArticles,\n      article_ids: fallbackArticles.map(a => a.id),\n      warning: 'Used fallback selection due to GPT parsing error: ' + error.message\n    }\n  };\n}"
+      },
+      "id": "parse-curation-result",
+      "name": "Parse Curation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1624,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final output for different consumers\nconst result = $input.first().json;\nconst articles = result.curated_articles || [];\n\n// Create formatted text summary\nlet textSummary = `📰 **Kuratierte News** (${result.usecase})\\n`;\ntextSummary += `Thema: ${result.topic || 'Alle'}\\n`;\ntextSummary += `${result.curated_count} von ${result.total_candidates} Artikeln ausgewählt\\n\\n`;\n\narticles.forEach((article, idx) => {\n  const emoji = article.priority === 'high' ? '🔴' : article.priority === 'medium' ? '🟡' : '🟢';\n  textSummary += `${idx + 1}. ${emoji} **${article.title}**\\n`;\n  textSummary += `   ${article.source} | ${article.published_at ? new Date(article.published_at).toLocaleDateString('de-DE') : 'Datum unbekannt'}\\n`;\n  if (article.summary) {\n    textSummary += `   ${article.summary.substring(0, 150)}...\\n`;\n  }\n  textSummary += `   🔗 ${article.url}\\n\\n`;\n});\n\nreturn {\n  json: {\n    ...result,\n    formatted_text: textSummary,\n    // Simplified list for quick access\n    headlines: articles.map(a => ({\n      title: a.title,\n      source: a.source,\n      url: a.url,\n      priority: a.priority\n    }))\n  }\n};"
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1848,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No articles found - return empty result\nconst params = $('Parse Inputs').first().json;\n\nreturn {\n  json: {\n    success: true,\n    usecase: params.usecase,\n    topic: params.topic,\n    total_candidates: 0,\n    curated_count: 0,\n    curated_articles: [],\n    article_ids: [],\n    formatted_text: `📰 **Kuratierte News** (${params.usecase})\\nKeine passenden Artikel gefunden für: ${params.topic || 'Alle Themen'}\\n\\nVersuche einen anderen Zeitraum oder ein anderes Thema.`,\n    headlines: [],\n    message: 'No articles found matching the criteria'\n  }\n};"
+      },
+      "id": "no-articles-response",
+      "name": "No Articles Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1176,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## News Curator Workflow\n\n**Eingang:** Use-Case + optionales Thema\n**Ausgang:** Kuratierte Artikel-Liste\n\n### Use-Cases:\n- `daily_newsletter` - Vielfältiger Mix\n- `topic_deep_dive` - Fokus auf ein Thema  \n- `breaking_news` - Nur aktuelle News\n- `social_media` - Teilbare Stories\n- `executive_briefing` - Business-Focus\n\n### API:\nPOST /webhook/curate-news\n```json\n{\n  \"usecase\": \"daily_newsletter\",\n  \"topic\": \"Siemens\",\n  \"max_articles\": 10,\n  \"days_back\": 1,\n  \"language\": \"de\"\n}\n```",
+        "height": 380,
+        "width": 280
+      },
+      "id": "curator-note",
+      "name": "Curator Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        360
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Inputs": {
+      "main": [
+        [
+          {
+            "node": "Fetch Candidate Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Candidate Articles": {
+      "main": [
+        [
+          {
+            "node": "Check Articles Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Articles Exist": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Curation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Articles Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Curation": {
+      "main": [
+        [
+          {
+            "node": "GPT Curate Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Curate Selection": {
+      "main": [
+        [
+          {
+            "node": "Parse Curation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Curation Result": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "sub-workflow"
+    }
+  ]
+}
+

@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## GHOSTWRITER: LinkedIn Posting\n\n**Zweck:** Generiert LinkedIn-Posts aus News-Content.\n\n### Input\n- `raw_content`: News/Artikel-Text\n- `style`: Tonalität des Posts\n\n### Styles\n- `professional` (default)\n- `storytelling`\n- `engagement`\n- `informative`\n- `provocative`\n\n### Output\n```json\n{\n  \"post\": \"Fertiger LinkedIn Post...\",\n  \"hashtags\": [\"#Tech\", \"#AI\"]\n}\n```\n\n### GPT Anweisungen\n- Max 3000 Zeichen\n- Struktur mit Hook, Body, CTA\n- Passende Emojis\n- Relevante Hashtags\n\n### Telegram Auslöser\n- \"LinkedIn Post zu...\"\n- \"erstelle LinkedIn Post\"",
+        "height": 420,
+        "width": 280
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        -1340
+      ]
+    },
+    {
+      "parameters": {
         "workflowInputs": {
           "values": [
             {

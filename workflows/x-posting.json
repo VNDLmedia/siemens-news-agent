@@ -1,6 +1,21 @@
 {
-  "name": "x posting",
+  "name": "GHOSTWRITER: X Posting",
   "nodes": [
+    {
+      "parameters": {
+        "content": "## GHOSTWRITER: X Posting\n\n**Zweck:** Generiert X/Twitter-Posts aus News-Content.\n\n### Input\n- `raw_content`: News/Artikel-Text\n- `style`: Tonalität des Posts\n\n### Styles\n- `professional` (default)\n- `provocative`\n- `informative`\n\n### Output\n```json\n{\n  \"post\": \"Fertiger Tweet...\",\n  \"valid\": true\n}\n```\n\n### GPT Anweisungen\n- Max 280 Zeichen (strikt!)\n- Prägnant und teilbar\n- Optional 1-2 Hashtags\n- Kein Markdown\n\n### Validierung\n- Retry bei > 280 Zeichen\n- Max 3 Versuche\n- GPT Korrektur-Loop\n\n### Telegram Auslöser\n- \"X Post zu...\"\n- \"Tweet erstellen\"\n- \"Twitter Post\"",
+        "height": 460,
+        "width": 280
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        290,
+        -700
+      ]
+    },
     {
       "parameters": {
         "workflowInputs": {

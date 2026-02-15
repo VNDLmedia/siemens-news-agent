@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## UPDATER: RSS Feed Validator\n\n**Zweck:** Prüft ob eine URL ein gültiger RSS Feed ist.\n\n### Input\n- `url`: Feed-URL zum Validieren\n\n### Validierung\n1. HTTP Request zur URL\n2. Prüfe Response auf XML\n3. Parse RSS/Atom Struktur\n4. Zähle vorhandene Items\n\n### Output\n```json\n{\n  \"status\": \"VALID\",\n  \"name\": \"Feed Name\",\n  \"itemCount\": 25,\n  \"url\": \"https://...\"\n}\n```\n\n### Status-Werte\n- `VALID` - Gültiger RSS/Atom Feed\n- `NOT_RSS` - Kein RSS Format\n- `UNREACHABLE` - URL nicht erreichbar\n\n### Verwendet von\n- RSS Feed Discovery\n- Agent (Tool)",
+        "height": 400,
+        "width": 280
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -140
+      ]
+    },
+    {
+      "parameters": {
         "workflowInputs": {
           "values": [
             {

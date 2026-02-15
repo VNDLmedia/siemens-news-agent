@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## Normalize Articles\n\n**Zweck:** Normalisiert und analysiert Rohartikel mit GPT.\n\n### Input\n- `raw_articles`: JSON Array von Rohartikeln\n- `filters`: Optionale Relevanzfilter\n\n### GPT Analyse (pro Artikel)\n- **summary**: 2-3 Sätze Zusammenfassung\n- **sentiment**: positive/negative/neutral\n- **sentiment_score**: -1.0 bis 1.0\n- **priority**: high/medium/low\n- **topics/keywords**: Themen & Schlagwörter\n- **companies/persons/regions**: Entitäten\n- **language/category**: Klassifizierung\n\n### Output (19 Spalten)\n```json\n{\n  url, title, content, source,\n  source_type, published_at,\n  summary, sentiment, sentiment_score,\n  priority, priority_reason,\n  topics[], keywords[], companies[],\n  persons[], regions[],\n  language, category, relevance_match[]\n}\n```\n\n### Features\n- Deduplizierung nach URL\n- HTML-Tag Entfernung\n- Fehlertoleranz bei GPT-Parsing",
+        "height": 560,
+        "width": 340
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1700,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "workflowInputs": {
           "values": [
             {

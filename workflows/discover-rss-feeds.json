@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## UPDATER: RSS Feed Discovery\n\n**Zweck:** Findet und validiert neue RSS Feeds zu einem Thema.\n\n### Input\n- `message`: Thema oder URL\n  - z.B. \"Automobilbranche\"\n  - z.B. \"https://spiegel.de\"\n\n### Ablauf\n1. GPT Agent interpretiert Anfrage\n2. Generiert mögliche Feed-URLs\n3. Validiert jeden Feed (via Validator)\n4. Gibt Liste valider Feeds zurück\n\n### Output\n```json\n[\n  {\n    \"name\": \"Feed Name\",\n    \"url\": \"https://...\",\n    \"itemCount\": 15,\n    \"status\": \"VALID\"\n  }\n]\n```\n\n### Verwendet\n- UPDATER: RSS Feed Validator\n- GPT-4 für URL-Generierung\n\n### Telegram Auslöser\n- \"finde feeds zu...\"\n- \"neue rss quellen\"\n- \"welche feeds gibt es\"",
+        "height": 500,
+        "width": 300
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        850
+      ]
+    },
+    {
+      "parameters": {
         "workflowInputs": {
           "values": [
             {

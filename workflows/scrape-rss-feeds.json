@@ -3,6 +3,21 @@
   "nodes": [
     {
       "parameters": {
+        "content": "## SCRAPER: RSS Feeds\n\n**Zweck:** Holt Artikel von RSS/Atom Feeds aus der DB.\n\n### Ablauf\n1. Enabled Feeds aus `rss_sources` Tabelle laden\n2. Pro Feed: RSS/Atom XML abrufen\n3. Format erkennen (RSS 2.0 / Atom)\n4. Items extrahieren, max 20 pro Feed\n5. Artikel formatieren für Pipeline\n6. Feed-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-rss-feeds\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"rss\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`rss_sources` - Feed-URLs verwalten\n\n### Unterstützte Formate\n- RSS 2.0 (rss.channel.item)\n- Atom (feed.entry)",
+        "height": 520,
+        "width": 320
+      },
+      "id": "info-note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -100
+      ]
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [
             {
@@ -174,6 +189,19 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all articles and return them for the Pipeline\nconst items = $input.all();\nconst articles = [];\n\nfor (const item of items) {\n  // Get the original article data from Format Article node\n  const articleData = $('Format Article').item(item.index)?.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from RSS Feeds' } }];\n}\n\nreturn articles;"
+      },
+      "id": "return-articles",
+      "name": "Return Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        96
+      ]
     }
   ],
   "pinData": {},
@@ -260,6 +288,17 @@
         [
           {
             "node": "Update Feed Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Feed Stats": {
+      "main": [
+        [
+          {
+            "node": "Return Articles",
             "type": "main",
             "index": 0
           }
