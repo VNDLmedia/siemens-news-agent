@@ -1,109 +1,96 @@
 {
-  "name": "google news rss",
+  "name": "SCRAPER: Google News",
   "nodes": [
     {
       "parameters": {
-        "workflowInputs": {
-          "values": [
+        "rule": {
+          "interval": [
             {
-              "name": "topic"
+              "field": "minutes",
+              "minutesInterval": 30
             }
           ]
         }
       },
-      "id": "4ed5beac-2995-4b18-ab40-36f466aac6ab",
-      "name": "Execute Workflow Trigger",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        3488,
-        -16
+        0,
+        0
       ]
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini",
-          "cachedResultName": "GPT-4O-MINI"
-        },
-        "messages": {
-          "values": [
-            {
-              "content": "Du bist ein Such-Experte. Der User gibt dir ein Thema in natürlicher Sprache. Deine Aufgabe: Erstelle so viele Google News Suchanfragen wie nötig um das Thema VOLLSTÄNDIG abzudecken.\n\nRegeln:\n- Einfaches Thema (eine Person, ein Produkt): 2-3 Queries\n- Mittleres Thema (Branche, Trend): 4-5 Queries\n- Komplexes Thema (Geopolitik, mehrdimensional): 6-8 Queries\n- Jede Query soll einen anderen Aspekt oder Blickwinkel abdecken\n- Mische deutsche und englische Queries wenn sinnvoll\n- Nutze verschiedene Synonyme und verwandte Begriffe\n- Maximum 8 Queries\n\nAnworte AUSSCHLIESSLICH mit einem JSON Array von Strings. Kein Markdown, keine Erklärung, kein Codeblock.\n\nBeispiel Input: \"Neuigkeiten zu Tesla\"\nBeispiel Output: [\"Tesla news 2026\",\"Tesla Aktie aktuell\",\"Elon Musk Tesla\"]\n\nBeispiel Input: \"Wie beeinflusst KI die europäische Wirtschaft?\"\nBeispiel Output: [\"AI impact European economy 2026\",\"KI Regulierung EU\",\"Künstliche Intelligenz Arbeitsmarkt Europa\",\"AI Act Auswirkungen Unternehmen\",\"KI Investitionen Europa\",\"AI Startups Europa Förderung\"]",
-              "role": "=system"
-            },
-            {
-              "content": "={{ $json.input || $json.topic || $json.searchTerm || $json.query || $json.message?.text || 'news' }}",
-              "role": "=user"
-            }
-          ]
-        },
-        "options": {
-          "maxTokens": 500,
-          "temperature": 0.3
-        }
+        "httpMethod": "POST",
+        "path": "scrape-google-news",
+        "options": {}
       },
-      "id": "5a16073a-6710-4410-a91a-88b36e9cc9ad",
-      "name": "Query Generator",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
       "position": [
-        3712,
-        -16
+        0,
+        192
+      ],
+      "webhookId": "scrape-google-news-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, query, language, category FROM search_queries WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 10",
+        "options": {}
+      },
+      "id": "fetch-queries",
+      "name": "Fetch Enabled Queries",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        96
       ],
       "credentials": {
-        "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.message.content.trim();\nconst queries = JSON.parse(raw);\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nconst originalTopic = triggerData.input || triggerData.topic || triggerData.searchTerm || triggerData.query || triggerData.message?.text || 'unknown';\n\nreturn queries.map(q => ({\n  json: {\n    query: q,\n    originalTopic: originalTopic\n  }\n}));"
-      },
-      "id": "685e8971-28b5-4606-81e8-706d35dce261",
-      "name": "Queries parsen",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        4096,
-        -16
-      ]
-    },
-    {
-      "parameters": {
-        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.query) }}&hl=de&gl=DE&ceid=DE:de",
+        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.query) }}&hl={{ $json.language || 'de' }}&gl={{ $json.language === 'en' ? 'US' : 'DE' }}&ceid={{ $json.language === 'en' ? 'US:en' : 'DE:de' }}",
         "options": {
           "response": {
             "response": {
               "responseFormat": "text"
             }
-          }
+          },
+          "timeout": 15000
         }
       },
-      "id": "780c8680-f4b9-4908-8b26-e77c757381a6",
-      "name": "Google News RSS",
+      "id": "fetch-rss",
+      "name": "Fetch Google News RSS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4336,
-        -16
-      ]
+        480,
+        96
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "c8f9854a-f14e-4175-8e27-40f473ed75f3",
-      "name": "XML",
+      "id": "parse-xml",
+      "name": "Parse XML",
       "type": "n8n-nodes-base.xml",
       "typeVersion": 1,
       "position": [
-        4560,
-        -16
+        720,
+        96
       ]
     },
     {
@@ -111,149 +98,150 @@
         "fieldToSplitOut": "rss.channel.item",
         "options": {}
       },
-      "id": "d85f4c38-7d2d-4407-a1e9-5e238caa1cde",
-      "name": "Split Out",
+      "id": "split-items",
+      "name": "Split Items",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        4784,
-        -16
+        960,
+        96
       ]
     },
     {
       "parameters": {
-        "maxItems": 20
+        "maxItems": 15
       },
-      "id": "18d8c9c6-5ffe-4a54-a0ef-0f5deb942261",
-      "name": "Limit",
+      "id": "limit-results",
+      "name": "Limit Per Query",
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        5024,
-        -16
+        1200,
+        96
       ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst seen = new Set();\nlet artikelText = '';\nlet count = 0;\n\nfor (const item of items) {\n  const title = item.json.title || 'Kein Titel';\n  if (seen.has(title)) continue;\n  seen.add(title);\n  count++;\n  \n  const pubDate = item.json.pubDate || '';\n  const source = item.json.source && item.json.source._ ? item.json.source._ : '';\n  const link = item.json.link || '';\n  \n  artikelText += `${count}. ${title}`;\n  if (source) artikelText += ` (${source})`;\n  if (pubDate) artikelText += ` - ${pubDate}`;\n  artikelText += '\\n';\n}\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nconst topic = triggerData.input || triggerData.topic || triggerData.searchTerm || triggerData.query || triggerData.message?.text || 'unknown';\n\nreturn [{\n  json: {\n    artikelText: artikelText,\n    topic: topic,\n    artikelAnzahl: count\n  }\n}];"
+        "jsCode": "// Article aus RSS Item + Query Info zusammenstellen\nconst item = $input.first().json;\nconst queryData = $('Fetch Enabled Queries').item($item)?.json || {};\n\nconst title = item.title || 'Unbekannter Titel';\nconst link = item.link || '';\nconst pubDate = item.pubDate ? new Date(item.pubDate).toISOString() : null;\nconst sourceName = item.source && item.source._ ? item.source._ : 'Google News';\nconst description = item.description || '';\n\n// Content aus description extrahieren (HTML Tags entfernen)\nlet content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n\nreturn [{\n  json: {\n    url: link,\n    title: title,\n    content: content,\n    source: sourceName,\n    source_type: 'google_news',\n    published_at: pubDate,\n    language: queryData.language || 'de',\n    category: queryData.category || 'general',\n    query_name: queryData.name,\n    query_id: queryData.id\n  }\n}];"
       },
-      "id": "621ba919-0045-4f87-bfde-47c6d07002de",
-      "name": "Artikel sammeln",
+      "id": "format-article",
+      "name": "Format Article",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5248,
-        -16
+        1440,
+        96
       ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "response-field",
-              "name": "response",
-              "value": "={{ $json.artikelText }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "operation": "executeQuery",
+        "query": "UPDATE search_queries SET article_count = article_count + 1, last_fetched = NOW() WHERE id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.query_id }}"
+        }
       },
-      "id": "15b58545-ecd0-4b77-8739-054f0648d1da",
-      "name": "Return Results",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "update-query-stats",
+      "name": "Update Query Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
       "position": [
-        5504,
-        -16
-      ]
+        1680,
+        96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "pinData": {},
   "connections": {
-    "Execute Workflow Trigger": {
+    "Schedule Trigger": {
       "main": [
         [
           {
-            "node": "Query Generator",
+            "node": "Fetch Enabled Queries",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Query Generator": {
+    "Webhook Trigger": {
       "main": [
         [
           {
-            "node": "Queries parsen",
+            "node": "Fetch Enabled Queries",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Queries parsen": {
+    "Fetch Enabled Queries": {
       "main": [
         [
           {
-            "node": "Google News RSS",
+            "node": "Fetch Google News RSS",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google News RSS": {
+    "Fetch Google News RSS": {
       "main": [
         [
           {
-            "node": "XML",
+            "node": "Parse XML",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "XML": {
+    "Parse XML": {
       "main": [
         [
           {
-            "node": "Split Out",
+            "node": "Split Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Out": {
+    "Split Items": {
       "main": [
         [
           {
-            "node": "Limit",
+            "node": "Limit Per Query",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Limit": {
+    "Limit Per Query": {
       "main": [
         [
           {
-            "node": "Artikel sammeln",
+            "node": "Format Article",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Artikel sammeln": {
+    "Format Article": {
       "main": [
         [
           {
-            "node": "Return Results",
+            "node": "Update Query Stats",
             "type": "main",
             "index": 0
           }
@@ -261,25 +249,21 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
-    "availableInMCP": false,
-    "timeSavedMode": "fixed",
-    "callerPolicy": "any",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
-  "versionId": "fb99d2d1-b7b9-4716-91ac-e608021fa23a",
+  "versionId": "new-google-news-scraper",
   "meta": {
     "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
   },
   "id": "TAwPcGi3EepKcWth",
   "tags": [
     {
-      "updatedAt": "2026-02-15T11:06:54.397Z",
-      "createdAt": "2026-02-15T11:06:54.397Z",
-      "id": "gi9ovDnn7x6JU3OX",
-      "name": "tool"
+      "id": "scraper-tag",
+      "name": "scraper"
     }
   ]
 }

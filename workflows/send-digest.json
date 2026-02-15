@@ -1,5 +1,5 @@
 {
-  "name": "Send Digest",
+  "name": "Send Email Digest",
   "nodes": [
     {
       "parameters": {
@@ -13,7 +13,7 @@
         }
       },
       "id": "cf75be52-8fc6-47a8-b739-190f790a2264",
-      "name": "Every Day at 8 AM",
+      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
@@ -28,7 +28,7 @@
         "options": {}
       },
       "id": "webhook-send-digest",
-      "name": "Webhook: Send Digest",
+      "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
@@ -193,7 +193,7 @@
         "options": {}
       },
       "id": "bbbaeb6e-f411-4a4e-a5af-d6296c755154",
-      "name": "Send Email Digest",
+      "name": "Send Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
@@ -216,7 +216,7 @@
         }
       },
       "id": "d805a019-03c9-419d-92b3-22302d0c8b1e",
-      "name": "Mark Articles as Sent",
+      "name": "Mark Articles Sent",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
@@ -265,7 +265,7 @@
         "width": 180
       },
       "id": "76311455-79c1-485b-b766-99b05d898e7a",
-      "name": "No Articles",
+      "name": "No Articles Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -291,7 +291,7 @@
   ],
   "pinData": {},
   "connections": {
-    "Every Day at 8 AM": {
+    "Schedule Trigger": {
       "main": [
         [
           {
@@ -302,7 +302,7 @@
         ]
       ]
     },
-    "Webhook: Send Digest": {
+    "Webhook Trigger": {
       "main": [
         [
           {
@@ -383,25 +383,25 @@
       "main": [
         [
           {
-            "node": "Send Email Digest",
+            "node": "Send Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Email Digest": {
+    "Send Email": {
       "main": [
         [
           {
-            "node": "Mark Articles as Sent",
+            "node": "Mark Articles Sent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Mark Articles as Sent": {
+    "Mark Articles Sent": {
       "main": [
         [
           {

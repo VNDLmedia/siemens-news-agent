@@ -1,0 +1,209 @@
+{
+  "name": "Normalize Articles",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "raw_articles"
+            },
+            {
+              "name": "filters"
+            }
+          ]
+        }
+      },
+      "id": "9b356bd4-461d-44f1-b021-b3484dcfbf98",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1408,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.raw_articles;\nlet articles;\n\ntry {\n  articles = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (e) {\n  return [{ json: { _error: 'JSON parse failed: ' + e.message } }];\n}\n\nif (!Array.isArray(articles)) articles = [articles];\n\nconst filters = $input.first().json.filters || '';\n\nconst cleaned = articles.filter(a => {\n  if (!a || typeof a !== 'object') return false;\n  if (Object.keys(a).length === 0) return false;\n  if (a._empty || a.error) return false;\n  return true;\n});\n\nif (cleaned.length === 0) {\n  return [{ json: { _empty: true } }];\n}\n\nreturn cleaned.map(a => ({ json: { raw_item: a, filters: filters } }));"
+      },
+      "id": "f19aa486-be4d-47b8-9ba7-2c1783dccf70",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5f504eb8-4a10-4739-a337-abb019283a18",
+      "name": "Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -928,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Du bist ein Nachrichten-Normalisierer und Analyst. Du bekommst ein rohes Datenobjekt aus einer Nachrichtenquelle.\n\nDeine Aufgabe: Normalisiere die Daten UND analysiere den Inhalt. Gib AUSSCHLIESSLICH ein JSON Objekt zurueck.\n\nZIEL-FORMAT (STRIKT):\n{\n  \"url\": \"https://...\",\n  \"title\": \"Titel des Artikels\",\n  \"content\": \"Inhalt oder Snippet\",\n  \"source\": \"Quellenname\",\n  \"source_type\": \"rss\",\n  \"published_at\": \"ISO 8601 oder null\",\n  \"summary\": \"2-3 Saetze Zusammenfassung\",\n  \"sentiment\": \"positive\",\n  \"sentiment_score\": 0.0,\n  \"priority\": \"medium\",\n  \"priority_reason\": \"Warum diese Prioritaet\",\n  \"topics\": [\"Thema1\", \"Thema2\"],\n  \"keywords\": [\"Keyword1\", \"Keyword2\", \"Keyword3\"],\n  \"companies\": [\"Firma1\"],\n  \"persons\": [\"Person1\"],\n  \"regions\": [\"Region1\"],\n  \"language\": \"de\",\n  \"category\": \"business\",\n  \"relevance_match\": []\n}\n\nNORMALISIERUNG:\n- url: URL zum Original. Aus link, url, post_url etc. Wenn keine: null\n- title: Titel. Wenn keiner: ersten Satz vom Content\n- content: Artikeltext/Snippet/Beschreibung. Wenn nichts: leerer String\n- source: Quellenname (z.B. \"Handelsblatt\", \"Twitter/@username\"). Aus creator, author, source etc.\n- source_type: Erkennung anhand der Datenstruktur:\n  - \"rss\" = hat link + pubDate/contentSnippet/creator (typische RSS Felder)\n  - \"google_news\" = hat google news spezifische Felder oder source._ Struktur\n  - \"twitter\" = hat post_url/post_text/platform=Twitter oder x.com URLs\n- published_at: ISO 8601 (YYYY-MM-DDTHH:mm:ssZ). Aus pubDate, date, created_at parsen. Wenn nicht parsebar: null\n\nANALYSE:\n- summary: 2-3 Saetze Zusammenfassung des Inhalts\n- sentiment: \"positive\" | \"negative\" | \"neutral\"\n  - positive: Wachstum, Erfolge, Innovationen, gute Zahlen\n  - negative: Verluste, Entlassungen, Skandale, Krisen\n  - neutral: Sachberichte, Ankuendigungen ohne Wertung\n- sentiment_score: -1.0 bis 1.0\n- priority: \"high\" | \"medium\" | \"low\"\n  - high: Breaking News, grosse Marktbewegungen, regulatorische Aenderungen, Krisen\n  - medium: Branchentrends, Personalwechsel, Produktlaunches\n  - low: Meinungsbeitraege, Randthemen, Wiederholungen\n- priority_reason: Kurze Begruendung\n- topics: Uebergeordnete Themen\n- keywords: 3-5 relevante Keywords\n- companies: Erwaehnte Unternehmen\n- persons: Erwaehnte Personen\n- regions: Erwaehnte Regionen/Laender\n- language: \"de\" | \"en\" | \"other\"\n- category: \"politics\" | \"business\" | \"tech\" | \"science\" | \"sports\" | \"entertainment\" | \"health\" | \"other\"\n- relevance_match: Wenn Filter uebergeben wurden, pruefe ob Artikel passt. Jeden Match eintragen. Sonst leeres Array.\n\nWICHTIG:\n- NUR valides JSON, kein Markdown, keine Backticks\n- Erfinde KEINE Daten die nicht im Input stehen\n- Wenn Input unbrauchbar: alle Felder leer/null/default",
+              "role": "=system"
+            },
+            {
+              "content": "=Rohdaten:\n{{ JSON.stringify($json.raw_item) }}\n\nFilter:\n{{ $json.filters || 'keine' }}",
+              "role": "=user"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "maxTokens": 800,
+          "temperature": 0
+        }
+      },
+      "id": "6e1cc6c8-5dc5-4d05-97aa-6d01fdda9da3",
+      "name": "GPT Normalize + Analyze",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -688,
+        -112
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const content = $json.message?.content;\nif (!content) return { json: { _skip: true } };\n\nlet parsed;\ntry {\n  if (typeof content === 'object') {\n    parsed = content;\n  } else {\n    let raw = String(content).trim();\n    raw = raw.replace(/```json\\s*/gi, '').replace(/```\\s*/g, '').trim();\n    parsed = JSON.parse(raw);\n  }\n} catch (e) {\n  return { json: { _skip: true } };\n}\n\nreturn { json: parsed };"
+      },
+      "id": "c1c0e221-623b-413d-a74d-761193bf8b03",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Set();\n\nfor (const item of items) {\n  const d = item.json;\n  if (d._skip || d._empty) continue;\n  if (!d.url) continue;\n  if (seen.has(d.url)) continue;\n  seen.add(d.url);\n\n  results.push({\n    json: {\n      url: String(d.url).substring(0, 2000),\n      title: String(d.title || '').substring(0, 500),\n      content: String(d.content || '').substring(0, 10000),\n      source: String(d.source || 'Unknown').substring(0, 200),\n      source_type: ['rss', 'google_news', 'twitter'].includes(d.source_type) ? d.source_type : 'rss',\n      published_at: d.published_at || null,\n      summary: String(d.summary || '').substring(0, 1000),\n      sentiment: ['positive', 'negative', 'neutral'].includes(d.sentiment) ? d.sentiment : 'neutral',\n      sentiment_score: Math.max(-1, Math.min(1, parseFloat(d.sentiment_score) || 0)),\n      priority: ['high', 'medium', 'low'].includes(d.priority) ? d.priority : 'low',\n      priority_reason: String(d.priority_reason || '').substring(0, 500),\n      topics: Array.isArray(d.topics) ? d.topics : [],\n      keywords: Array.isArray(d.keywords) ? d.keywords : [],\n      companies: Array.isArray(d.companies) ? d.companies : [],\n      persons: Array.isArray(d.persons) ? d.persons : [],\n      regions: Array.isArray(d.regions) ? d.regions : [],\n      language: ['de', 'en', 'other'].includes(d.language) ? d.language : 'other',\n      category: ['politics', 'business', 'tech', 'science', 'sports', 'entertainment', 'health', 'other'].includes(d.category) ? d.category : 'other',\n      relevance_match: Array.isArray(d.relevance_match) ? d.relevance_match : []\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { _empty: true, message: 'Keine normalisierbaren Artikel' } }];\n}\n\nreturn results;"
+      },
+      "id": "2503b6bf-3611-4740-81b2-b4e0ea6e1c77",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        -304
+      ]
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "raw_articles": "[{\"link\":\"https://www.handelsblatt.com/siemens-q2-2026\",\"title\":\"Siemens steigert Umsatz im zweiten Quartal um 8 Prozent\",\"contentSnippet\":\"Der Technologiekonzern Siemens hat im zweiten Quartal seinen Umsatz um 8 Prozent gesteigert. Besonders die Sparte Digital Industries trug zum Wachstum bei.\",\"creator\":\"Handelsblatt\",\"pubDate\":\"Sat, 15 Feb 2026 08:30:00 GMT\"},{\"post_url\":\"https://x.com/elonmusk/status/123456\",\"post_text\":\"Tesla FSD v13 is now available in Europe. Biggest update yet.\",\"author\":\"@elonmusk\",\"platform\":\"Twitter\",\"created_at\":\"2026-02-15T10:00:00Z\"},{\"title\":\"EU AI Act tritt in Kraft\",\"source\":{\"_\":\"FAZ\"},\"pubDate\":\"Sat, 15 Feb 2026 06:00:00 GMT\"},{\"response\":\"broken item\"},{\"link\":\"https://www.spiegel.de/us-zoelle-maschinenbau\",\"title\":\"Deutsche Industrie warnt vor neuen US-Zoellen\",\"content\":\"Die deutschen Maschinenbauer sehen die angekuendigten US-Zoelle als ernsthafte Bedrohung. Bis zu 25 Prozent Aufschlag drohen.\",\"source\":\"Spiegel\",\"pubDate\":\"Sat, 15 Feb 2026 09:00:00 GMT\"},{\"link\":\"https://www.handelsblatt.com/siemens-q2-2026\",\"title\":\"Duplikat\",\"contentSnippet\":\"Duplikat\",\"creator\":\"Handelsblatt\",\"pubDate\":\"Sat, 15 Feb 2026 08:30:00 GMT\"}]",
+          "filters": "Siemens, Tesla, Elektromobilitaet, KI, US-Zoelle"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GPT Normalize + Analyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Normalize + Analyze": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "84330898-ad03-4e37-a28d-0dced00a7102",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2c9038e79e4f0de69b3e8f277105c48d1cdaae248cdaf2f5ca828ee1f7eccc63"
+  },
+  "id": "6AGSjWYEJDPHqgvJ",
+  "tags": []
+}

@@ -1,5 +1,5 @@
 {
-  "name": "linkedin posting",
+  "name": "GHOSTWRITER: LinkedIn Posting",
   "nodes": [
     {
       "parameters": {
@@ -49,7 +49,7 @@
         }
       },
       "id": "5e099912-bd0b-40d7-b1c5-2e161fd243c5",
-      "name": "LinkedIn Ghostwriter",
+      "name": "GPT LinkedIn Ghostwriter",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
       "position": [
@@ -93,14 +93,14 @@
       "main": [
         [
           {
-            "node": "LinkedIn Ghostwriter",
+            "node": "GPT LinkedIn Ghostwriter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "LinkedIn Ghostwriter": {
+    "GPT LinkedIn Ghostwriter": {
       "main": [
         [
           {

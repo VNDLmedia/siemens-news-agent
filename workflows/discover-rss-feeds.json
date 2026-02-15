@@ -1,5 +1,5 @@
 {
-  "name": "rss_feed_discovery",
+  "name": "UPDATER: RSS Feed Discovery",
   "nodes": [
     {
       "parameters": {
@@ -29,7 +29,7 @@
           "value": "rD_S2_zWqydJCyeTB2MjS",
           "mode": "list",
           "cachedResultUrl": "/workflow/rD_S2_zWqydJCyeTB2MjS",
-          "cachedResultName": "RSS Feed Validator"
+          "cachedResultName": "UPDATER: RSS Feed Validator"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -56,7 +56,7 @@
         }
       },
       "id": "947b9cc8-1c52-41b2-8536-127b83d91823",
-      "name": "RSS Feed Validator",
+      "name": "Tool: RSS Validator",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
@@ -126,7 +126,7 @@
         }
       },
       "id": "31d2ba83-9807-4f38-8c48-27bfb4cdb47a",
-      "name": "rss_feed_discovery_agent",
+      "name": "Discovery Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
       "position": [
@@ -150,18 +150,18 @@
       "main": [
         [
           {
-            "node": "rss_feed_discovery_agent",
+            "node": "Discovery Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "RSS Feed Validator": {
+    "Tool: RSS Validator": {
       "ai_tool": [
         [
           {
-            "node": "rss_feed_discovery_agent",
+            "node": "Discovery Agent",
             "type": "ai_tool",
             "index": 0
           }
@@ -172,14 +172,14 @@
       "ai_languageModel": [
         [
           {
-            "node": "rss_feed_discovery_agent",
+            "node": "Discovery Agent",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "rss_feed_discovery_agent": {
+    "Discovery Agent": {
       "main": [
         [
           {

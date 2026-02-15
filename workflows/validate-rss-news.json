@@ -1,5 +1,5 @@
 {
-  "name": "RSS Feed Validator",
+  "name": "UPDATER: RSS Feed Validator",
   "nodes": [
     {
       "parameters": {
@@ -33,7 +33,7 @@
         }
       },
       "id": "73b11a0f-03fb-4540-81fa-56cde87976c1",
-      "name": "HTTP Request",
+      "name": "Fetch Feed URL",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -48,7 +48,7 @@
         "jsCode": "const data = $json.data || '';\nconst url = $('Execute Workflow Trigger').first().json.url;\nconst error = $json.error;\nconst statusCode = $json.statusCode || 0;\n\nif (error || data.length < 50) {\n  return [{ json: { response: 'UNREACHABLE: ' + (error || 'Empty response') } }];\n}\n\nconst isRSS = data.includes('<rss') || data.includes('<feed') || data.includes('<channel') || data.includes('<item>') || data.includes('<entry>');\n\nif (!isRSS) {\n  return [{ json: { response: 'NOT_RSS: URL erreichbar aber kein RSS-Format' } }];\n}\n\nconst m = data.match(/<title>([^<]+)<\\/title>/);\nconst name = m ? m[1] : 'Unknown';\nconst items = (data.match(/<item>/g) || []).length + (data.match(/<entry>/g) || []).length;\n\nreturn [{ json: { response: 'VALID: ' + name + ' (' + items + ' Artikel)' } }];"
       },
       "id": "af53b674-1a69-42aa-bb30-831f5e524e1d",
-      "name": "Check Response",
+      "name": "Validate Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -63,18 +63,18 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Fetch Feed URL",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request": {
+    "Fetch Feed URL": {
       "main": [
         [
           {
-            "node": "Check Response",
+            "node": "Validate Response",
             "type": "main",
             "index": 0
           }

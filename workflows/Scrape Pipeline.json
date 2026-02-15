@@ -1,0 +1,355 @@
+{
+  "name": "Scrape Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "7621e647-d5a1-4629-8273-67f7173ce689",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-pipeline",
+        "options": {}
+      },
+      "id": "f4e0a0c5-7550-46d8-8014-025e1dd433d8",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        384
+      ],
+      "webhookId": "scrape-pipeline-webhook"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "TAwPcGi3EepKcWth",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/TAwPcGi3EepKcWth",
+          "cachedResultName": "SCRAPER: Google News"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "faf76326-c4b9-4711-81af-5e3ee75eab1c",
+      "name": "Call Google News Scraper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jBs4v5XzeetXiWlr",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/jBs4v5XzeetXiWlr",
+          "cachedResultName": "SCRAPER: RSS Feeds"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "d55c0bf5-60dc-4d5a-b9f6-f659df2febaf",
+      "name": "Call RSS Feeds Scraper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        224
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst merged = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  if (!d || Object.keys(d).length === 0) continue;\n  if (d.error) continue;\n  merged.push({ json: d });\n}\n\nif (merged.length === 0) {\n  return [{ json: { _empty: true, message: 'Keine Daten von Scrapern' } }];\n}\n\nreturn merged;"
+      },
+      "id": "c0051cb8-5224-49d7-924d-3ac9db6c19df",
+      "name": "Merge All",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not-empty",
+              "leftValue": "={{ $json._empty }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notTrue"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6d97ab1f-70ae-4776-8094-1341de3a8bba",
+      "name": "Daten vorhanden?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "NORMALIZE_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Normalize Articles"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "raw_articles": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+            "filters": ""
+          },
+          "matchingColumns": [
+            "raw_articles"
+          ],
+          "schema": [
+            {
+              "id": "raw_articles",
+              "displayName": "raw_articles",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "8a6c1cae-976e-4eeb-ab67-fa80c5eda04b",
+      "name": "Normalize + Analyze",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, TRUE, FALSE) ON CONFLICT (url) DO NOTHING",
+        "options": {
+          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ '{' + ($json.topics || []).join(',') + '}' }},={{ '{' + ($json.keywords || []).join(',') + '}' }},={{ '{' + ($json.companies || []).join(',') + '}' }},={{ '{' + ($json.persons || []).join(',') + '}' }},={{ '{' + ($json.regions || []).join(',') + '}' }},={{ $json.language }},={{ $json.category }},={{ '{' + ($json.relevance_match || []).join(',') + '}' }}"
+        }
+      },
+      "id": "5873d7a4-d021-4b73-8907-330715d40130",
+      "name": "DB Insert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        960,
+        144
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst total = items.length;\nconst dupes = items.filter(i => i.json.affectedRows === 0).length;\nconst failed = items.filter(i => i.json.error).length;\nconst inserted = total - dupes - failed;\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total,\n    inserted,\n    duplicates: dupes,\n    failed,\n    message: `${inserted} neu, ${dupes} Duplikate, ${failed} Fehler`\n  }\n}];"
+      },
+      "id": "e84f9b98-596e-4d87-8718-3586e085450e",
+      "name": "Ergebnis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Call Google News Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call RSS Feeds Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call Google News Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call RSS Feeds Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google News": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feeds": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All": {
+      "main": [
+        [
+          {
+            "node": "Daten vorhanden?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daten vorhanden?": {
+      "main": [
+        [
+          {
+            "node": "Normalize + Analyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize + Analyze": {
+      "main": [
+        [
+          {
+            "node": "DB Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Insert": {
+      "main": [
+        [
+          {
+            "node": "Ergebnis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5322130b-fa8f-41ea-bc29-13ae7fb00db2",
+  "meta": {
+    "instanceId": "2c9038e79e4f0de69b3e8f277105c48d1cdaae248cdaf2f5ca828ee1f7eccc63"
+  },
+  "id": "ba9OG35bDKJwzfPb",
+  "tags": []
+}

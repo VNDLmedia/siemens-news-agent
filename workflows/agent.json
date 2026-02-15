@@ -1,5 +1,5 @@
 {
-  "name": "Agent",
+  "name": "Telegram Agent",
   "nodes": [
     {
       "parameters": {
@@ -73,7 +73,7 @@
           "value": "TAwPcGi3EepKcWth",
           "mode": "list",
           "cachedResultUrl": "/workflow/TAwPcGi3EepKcWth",
-          "cachedResultName": "google news rss"
+          "cachedResultName": "Google News Scraper"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -106,7 +106,7 @@
         832
       ],
       "id": "faa4c29e-7a8a-4943-b8a8-48ebe9af6772",
-      "name": "Call 'google news rss'1"
+      "name": "Tool: Google News Scraper"
     },
     {
       "parameters": {
@@ -138,7 +138,7 @@
           "value": "jmzMPebmVdBYKtLiHvpkc",
           "mode": "list",
           "cachedResultUrl": "/workflow/jmzMPebmVdBYKtLiHvpkc",
-          "cachedResultName": "x posting"
+          "cachedResultName": "GHOSTWRITER: X Posting"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -180,7 +180,7 @@
         1488
       ],
       "id": "6ee804b0-93d3-47c9-ac6d-578e15e90a04",
-      "name": "Call 'x posting'"
+      "name": "Tool: X Posting"
     },
     {
       "parameters": {
@@ -190,7 +190,7 @@
           "value": "8KofFJBFS7WMl8eR",
           "mode": "list",
           "cachedResultUrl": "/workflow/8KofFJBFS7WMl8eR",
-          "cachedResultName": "linkedin posting"
+          "cachedResultName": "GHOSTWRITER: LinkedIn Posting"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -230,17 +230,17 @@
         1488
       ],
       "id": "02f6ea1e-3845-4fb6-935b-adbfab5fb281",
-      "name": "Call 'linkedin posting'"
+      "name": "Tool: LinkedIn Posting"
     },
     {
       "parameters": {
-        "description": "Call this tool to recive a validated list of rss feeds",
+        "description": "Call this tool to receive a validated list of RSS feeds for a given topic or URL.",
         "workflowId": {
           "__rl": true,
           "value": "kN9aFFAMemmCZtinbEC4b",
           "mode": "list",
           "cachedResultUrl": "/workflow/kN9aFFAMemmCZtinbEC4b",
-          "cachedResultName": "rss_feed_discovery"
+          "cachedResultName": "UPDATER: RSS Feed Discovery"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -273,7 +273,60 @@
         1488
       ],
       "id": "2ce070ef-5433-4136-b539-5c862d940947",
-      "name": "Call 'rss_feed_discovery'"
+      "name": "Tool: RSS Feed Discovery"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "bfc5ba74-4a2b-482c-b491-5ed515428287",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        4096,
+        400
+      ],
+      "webhookId": "telegram-webhook-id",
+      "alwaysOutputData": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "jL3MAmDNSYVw03ty",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "parse-input",
+              "name": "input",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "parse-chat-id",
+              "name": "telegram_chat_id",
+              "value": "={{ $json.message.chat.id + \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Parse Telegram Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4336,
+        400
+      ]
     }
   ],
   "pinData": {
@@ -309,7 +362,7 @@
         ]
       ]
     },
-    "Call 'google news rss'1": {
+    "Tool: Google News Scraper": {
       "ai_tool": [
         [
           {
@@ -331,7 +384,7 @@
         ]
       ]
     },
-    "Call 'x posting'": {
+    "Tool: X Posting": {
       "ai_tool": [
         [
           {
@@ -342,7 +395,7 @@
         ]
       ]
     },
-    "Call 'linkedin posting'": {
+    "Tool: LinkedIn Posting": {
       "ai_tool": [
         [
           {
@@ -353,12 +406,34 @@
         ]
       ]
     },
-    "Call 'rss_feed_discovery'": {
+    "Tool: RSS Feed Discovery": {
       "ai_tool": [
         [
           {
             "node": "AI Agent",
             "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
             "index": 0
           }
         ]
@@ -383,12 +458,6 @@
       "createdAt": "2026-02-15T11:07:28.202Z",
       "id": "cLLyuZC8cXMTqna1",
       "name": "agent"
-    },
-    {
-      "updatedAt": "2026-02-15T11:06:45.886Z",
-      "createdAt": "2026-02-15T11:06:45.886Z",
-      "id": "y0703l5B1OPtw1gh",
-      "name": "sub-workflow"
     }
   ]
 }
