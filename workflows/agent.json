@@ -6,7 +6,7 @@
         "promptType": "define",
         "text": "={{ $json.input }}",
         "options": {
-          "systemMessage": "Du bist ein News-Assistent auf Telegram.\n\nABLAUF BEI JEDER NACHRICHT:\n1. Sende sofort eine Telegram-Nachricht dass du arbeitest\n2. Erkenne was der User will (News, X Post, LinkedIn Post)\n3. Führe die passenden Tools aus\n4. Sende das Ergebnis per Telegram an den User\n\nNEWS-ABRUF:\n- Rufe das Google RSS Tool mit dem Thema auf\n- Formatiere die Ergebnisse übersichtlich mit Emojis\n- Sende per Telegram\n\nX/TWITTER POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das X Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nLINKEDIN POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das LinkedIn Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nREGELN:\n- JEDE Antwort MUSS über das Telegram Tool gesendet werden — ohne Telegram sieht der User nichts\n- chatId ist vorgesetzt, fülle nur 'message'\n- Wenn der User keinen Style angibt, nutze 'professional' als Default\n- Gib Posts von X/LinkedIn Tools immer 1:1 weiter, nicht umformulieren\n\n\nAM ENDE IMMER DIE ERGEBNISSE VIA TELEGRAM MIT DEM USER TEILEN!"
+          "systemMessage": "Du bist ein News-Assistent auf Telegram.\n\nABLAUF BEI JEDER NACHRICHT:\n1. Sende sofort eine Telegram-Nachricht dass du arbeitest\n2. Erkenne was der User will (News, X Post, LinkedIn Post, RSS Quellen finden)\n3. Führe die passenden Tools aus\n4. Sende das Ergebnis per Telegram an den User\n\nNEWS-ABRUF:\n- Rufe das Google RSS Tool mit dem Thema auf\n- Formatiere die Ergebnisse übersichtlich mit Emojis\n- Sende per Telegram\n\nX/TWITTER POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das X Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nLINKEDIN POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das LinkedIn Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nRSS QUELLEN FINDEN:\n- Wenn der User neue RSS-Quellen/Feeds zu einem Thema sucht, nutze das rss_feed_discovery Tool\n- Gib das Thema oder die konkrete URL als message weiter\n- Das Tool gibt ein JSON Array mit validierten Feeds zurueck (name, url, itemCount, status)\n- Formatiere die Ergebnisse fuer Telegram:\n  ✅ Name - URL (X Artikel)\n- Wenn keine Feeds gefunden: User informieren\n- Erkenne Ausloeser wie: \"finde feeds\", \"suche quellen\", \"neue rss\", \"welche feeds gibt es zu\"\n\nREGELN:\n- JEDE Antwort MUSS über das Telegram Tool gesendet werden — ohne Telegram sieht der User nichts\n- chatId ist vorgesetzt, fülle nur 'message'\n- Wenn der User keinen Style angibt, nutze 'professional' als Default\n- Gib Posts von X/LinkedIn Tools immer 1:1 weiter, nicht umformulieren\n\nAM ENDE IMMER DIE ERGEBNISSE VIA TELEGRAM MIT DEM USER TEILEN!"
         }
       },
       "id": "875a1ba0-2651-484a-8527-954aac2421d4",
@@ -15,15 +15,16 @@
       "typeVersion": 3.1,
       "position": [
         4544,
-        928
+        608
       ]
     },
     {
       "parameters": {
         "model": {
           "__rl": true,
+          "value": "gpt-5.2",
           "mode": "list",
-          "value": "gpt-4o-mini"
+          "cachedResultName": "gpt-5.2"
         },
         "builtInTools": {},
         "options": {}
@@ -34,12 +35,12 @@
       "typeVersion": 1.3,
       "position": [
         4544,
-        1120
+        784
       ],
       "credentials": {
         "openAiApi": {
-          "id": "news-agent-openai",
-          "name": "OpenAI API"
+          "id": "ZUFeCKTYUWusW7hp",
+          "name": "OpenAi account"
         }
       }
     },
@@ -54,14 +55,14 @@
       "type": "n8n-nodes-base.telegramTool",
       "typeVersion": 1.2,
       "position": [
-        5008,
-        1136
+        4944,
+        1328
       ],
       "webhookId": "09a97143-dc61-46ea-9e39-66a3066999ce",
       "credentials": {
         "telegramApi": {
-          "id": "news-agent-telegram",
-          "name": "Telegram Bot"
+          "id": "jL3MAmDNSYVw03ty",
+          "name": "Telegram account"
         }
       }
     },
@@ -101,8 +102,8 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        4912,
-        1328
+        5280,
+        832
       ],
       "id": "faa4c29e-7a8a-4943-b8a8-48ebe9af6772",
       "name": "Call 'google news rss'1"
@@ -126,7 +127,7 @@
       "typeVersion": 1.1,
       "position": [
         4336,
-        928
+        608
       ]
     },
     {
@@ -226,17 +227,60 @@
       "typeVersion": 2.2,
       "position": [
         4704,
-        1632
+        1488
       ],
       "id": "02f6ea1e-3845-4fb6-935b-adbfab5fb281",
       "name": "Call 'linkedin posting'"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to recive a validated list of rss feeds",
+        "workflowId": {
+          "__rl": true,
+          "value": "kN9aFFAMemmCZtinbEC4b",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/kN9aFFAMemmCZtinbEC4b",
+          "cachedResultName": "rss_feed_discovery"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message', `topic or concrete rss feeds \n\ne.g. \"Automobilbranche\" \"spiegelonline\" \"irgendwas technisches\" `, 'string') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        4576,
+        1488
+      ],
+      "id": "2ce070ef-5433-4136-b539-5c862d940947",
+      "name": "Call 'rss_feed_discovery'"
     }
   ],
   "pinData": {
     "Execute Workflow Trigger": [
       {
         "json": {
-          "input": "was geht grade bei nvdia? neue grafikkarten in planung?",
+          "input": "findest du neue feeds zum thema kochen?",
           "telegram_chat_id": "8407142561"
         }
       }
@@ -308,6 +352,17 @@
           }
         ]
       ]
+    },
+    "Call 'rss_feed_discovery'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -316,7 +371,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e5b8495c-a789-45a3-8ec4-29b7e5b2ec91",
+  "versionId": "bdd9b434-1582-4ea8-98e4-29c98c812cad",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"

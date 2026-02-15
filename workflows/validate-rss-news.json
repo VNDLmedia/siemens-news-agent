@@ -1,0 +1,97 @@
+{
+  "name": "RSS Feed Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url"
+            }
+          ]
+        }
+      },
+      "id": "3e849edf-2d59-4bdd-a7bb-ad4653a5aba4",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "73b11a0f-03fb-4540-81fa-56cde87976c1",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        -32
+      ],
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.data || '';\nconst url = $('Execute Workflow Trigger').first().json.url;\nconst error = $json.error;\nconst statusCode = $json.statusCode || 0;\n\nif (error || data.length < 50) {\n  return [{ json: { response: 'UNREACHABLE: ' + (error || 'Empty response') } }];\n}\n\nconst isRSS = data.includes('<rss') || data.includes('<feed') || data.includes('<channel') || data.includes('<item>') || data.includes('<entry>');\n\nif (!isRSS) {\n  return [{ json: { response: 'NOT_RSS: URL erreichbar aber kein RSS-Format' } }];\n}\n\nconst m = data.match(/<title>([^<]+)<\\/title>/);\nconst name = m ? m[1] : 'Unknown';\nconst items = (data.match(/<item>/g) || []).length + (data.match(/<entry>/g) || []).length;\n\nreturn [{ json: { response: 'VALID: ' + name + ' (' + items + ' Artikel)' } }];"
+      },
+      "id": "af53b674-1a69-42aa-bb30-831f5e524e1d",
+      "name": "Check Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -32
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Check Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "06fa079a-dedb-41db-a005-24b8e66c9ff6",
+  "meta": {
+    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+  },
+  "id": "rD_S2_zWqydJCyeTB2MjS",
+  "tags": []
+}
