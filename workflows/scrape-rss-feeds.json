@@ -1,10 +1,11 @@
 {
+  "id": "jBs4v5XzeetXiWlr",
   "name": "SCRAPER: RSS Feeds",
   "nodes": [
     {
       "parameters": {
-        "content": "## SCRAPER: RSS Feeds\n\n**Zweck:** Holt Artikel von RSS/Atom Feeds aus der DB.\n\n### Ablauf\n1. Enabled Feeds aus `rss_sources` Tabelle laden\n2. Pro Feed: RSS/Atom XML abrufen\n3. Format erkennen (RSS 2.0 / Atom)\n4. Items extrahieren, max 20 pro Feed\n5. Artikel formatieren für Pipeline\n6. Feed-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-rss-feeds\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"rss\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`rss_sources` - Feed-URLs verwalten\n\n### Unterstützte Formate\n- RSS 2.0 (rss.channel.item)\n- Atom (feed.entry)",
-        "height": 520,
+        "content": "## SCRAPER: RSS Feeds\n\n**Zweck:** Holt Artikel von RSS/Atom Feeds aus der DB.\n\n### Ablauf\n1. Enabled Feeds aus `rss_sources` Tabelle laden\n2. Pro Feed: RSS/Atom XML abrufen (via Loop)\n3. Format erkennen (RSS 2.0 / Atom)\n4. Items extrahieren, max 20 pro Feed\n5. Artikel formatieren für Pipeline\n6. Feed-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-rss-feeds\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"rss\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`rss_sources` - Feed-URLs verwalten\n\n### Unterstützte Formate\n- RSS 2.0 (rss.channel.item)\n- Atom (feed.entry)\n\n### Fix 2026-02-15\nAdded SplitInBatches loop to process\none feed at a time (20 articles each).",
+        "height": 580,
         "width": 320
       },
       "id": "info-note",
@@ -54,6 +55,19 @@
     },
     {
       "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        384
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT id, name, url, language, category FROM rss_sources WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 20",
         "options": {}
@@ -75,6 +89,20 @@
     },
     {
       "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-feeds",
+      "name": "Loop Feeds",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        96
+      ]
+    },
+    {
+      "parameters": {
         "url": "={{ $json.url }}",
         "options": {
           "response": {
@@ -90,7 +118,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        480,
+        720,
         96
       ],
       "continueOnFail": true
@@ -104,29 +132,16 @@
       "type": "n8n-nodes-base.xml",
       "typeVersion": 1,
       "position": [
-        720,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// RSS oder Atom Feed Items extrahieren\nconst data = $input.first().json;\nconst feedData = $('Fetch Enabled Feeds').item($item)?.json || {};\n\nlet items = [];\n\n// RSS 2.0\nif (data.rss && data.rss.channel && data.rss.channel.item) {\n  items = Array.isArray(data.rss.channel.item) ? data.rss.channel.item : [data.rss.channel.item];\n}\n// Atom\nelse if (data.feed && data.feed.entry) {\n  items = Array.isArray(data.feed.entry) ? data.feed.entry : [data.feed.entry];\n}\n\nif (items.length === 0) {\n  return [];\n}\n\n// Limit auf 20 Artikel pro Feed\nitems = items.slice(0, 20);\n\nreturn items.map(item => {\n  let title, link, pubDate, description;\n  \n  // RSS Format\n  if (item.title && typeof item.title === 'string') {\n    title = item.title;\n    link = item.link || '';\n    pubDate = item.pubDate || item.published || '';\n    description = item.description || item.content || item['content:encoded'] || '';\n  }\n  // Atom Format\n  else if (item.title && item.title._) {\n    title = item.title._;\n    link = item.link && item.link.href ? item.link.href : (item.id || '');\n    pubDate = item.updated || item.published || '';\n    description = item.summary ? (item.summary._ || item.summary) : (item.content ? (item.content._ || item.content) : '');\n  }\n  \n  // Content extrahieren (HTML Tags entfernen)\n  let content = '';\n  if (typeof description === 'string') {\n    content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  }\n  \n  return {\n    json: {\n      title: title || 'Unbekannter Titel',\n      link: link,\n      pubDate: pubDate,\n      description: description,\n      content: content,\n      feedData: feedData\n    }\n  };\n});"
-      },
-      "id": "extract-items",
-      "name": "Extract Items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
         960,
         96
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Article formatieren für DB Insert\nconst item = $input.first().json;\nconst feedData = item.feedData || {};\n\nlet pubDate = null;\nif (item.pubDate) {\n  try {\n    pubDate = new Date(item.pubDate).toISOString();\n  } catch(e) {\n    pubDate = null;\n  }\n}\n\nreturn [{\n  json: {\n    url: item.link || '',\n    title: item.title || 'Unbekannter Titel',\n    content: item.content || '',\n    source: feedData.name || 'RSS Feed',\n    source_type: 'rss',\n    published_at: pubDate,\n    language: feedData.language || 'de',\n    category: feedData.category || 'general',\n    feed_id: feedData.id\n  }\n}];"
+        "jsCode": "// RSS oder Atom Feed Items extrahieren\n// Feed data comes from the current Loop batch (1 feed per iteration)\nconst data = $input.first().json;\nconst feedData = $('Loop Feeds').first()?.json || {};\n\nlet items = [];\n\n// RSS 2.0\nif (data.rss && data.rss.channel && data.rss.channel.item) {\n  items = Array.isArray(data.rss.channel.item) ? data.rss.channel.item : [data.rss.channel.item];\n}\n// Atom\nelse if (data.feed && data.feed.entry) {\n  items = Array.isArray(data.feed.entry) ? data.feed.entry : [data.feed.entry];\n}\n\nif (items.length === 0) {\n  return [];\n}\n\n// Limit auf 20 Artikel pro Feed\nitems = items.slice(0, 20);\n\nreturn items.map(item => {\n  let title, link, pubDate, description;\n  \n  // RSS Format\n  if (item.title && typeof item.title === 'string') {\n    title = item.title;\n    link = item.link || '';\n    pubDate = item.pubDate || item.published || '';\n    description = item.description || item.content || item['content:encoded'] || '';\n  }\n  // Atom Format\n  else if (item.title && item.title._) {\n    title = item.title._;\n    link = item.link && item.link.href ? item.link.href : (item.id || '');\n    pubDate = item.updated || item.published || '';\n    description = item.summary ? (item.summary._ || item.summary) : (item.content ? (item.content._ || item.content) : '');\n  }\n  // Fallback for other formats\n  else {\n    title = typeof item.title === 'object' ? (item.title._ || item.title['#text'] || JSON.stringify(item.title)) : (item.title || 'Unbekannter Titel');\n    link = typeof item.link === 'object' ? (item.link.href || item.link['@_href'] || '') : (item.link || '');\n    pubDate = item.pubDate || item.published || item.updated || '';\n    description = item.description || item.summary || item.content || '';\n  }\n  \n  // Content extrahieren (HTML Tags entfernen)\n  let content = '';\n  if (typeof description === 'string') {\n    content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  } else if (description && description._) {\n    content = description._.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  }\n  \n  return {\n    json: {\n      title: title || 'Unbekannter Titel',\n      link: link,\n      pubDate: pubDate,\n      description: description,\n      content: content,\n      feedData: feedData\n    }\n  };\n});"
       },
-      "id": "format-article",
-      "name": "Format Article",
+      "id": "extract-items",
+      "name": "Extract Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -136,30 +151,11 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "has-url",
-              "leftValue": "={{ $json.url }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+        "jsCode": "// Article formatieren für DB Insert\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const feedData = data.feedData || {};\n  \n  let pubDate = null;\n  if (data.pubDate) {\n    try {\n      pubDate = new Date(data.pubDate).toISOString();\n    } catch(e) {\n      pubDate = null;\n    }\n  }\n  \n  if (data.link) {\n    results.push({\n      json: {\n        url: data.link,\n        title: data.title || 'Unbekannter Titel',\n        content: data.content || '',\n        source: feedData.name || 'RSS Feed',\n        source_type: 'rss',\n        published_at: pubDate,\n        language: feedData.language || 'de',\n        category: feedData.category || 'general',\n        feed_id: feedData.id\n      }\n    });\n  }\n}\n\nreturn results;"
       },
-      "id": "filter-valid",
-      "name": "Filter Valid Articles",
-      "type": "n8n-nodes-base.if",
+      "id": "format-article",
+      "name": "Format Article",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
@@ -169,9 +165,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE rss_sources SET article_count = article_count + 1, last_fetched = NOW() WHERE id = $1",
+        "query": "UPDATE rss_sources SET article_count = article_count + $2, last_fetched = NOW() WHERE id = $1",
         "options": {
-          "queryReplacement": "={{ $json.feed_id }}"
+          "queryReplacement": "={{ $('Loop Feeds').first().json.id }},={{ $input.all().length }}"
         }
       },
       "id": "update-feed-stats",
@@ -192,15 +188,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// Collect all articles and return them for the Pipeline\nconst items = $input.all();\nconst articles = [];\n\nfor (const item of items) {\n  // Get the original article data from Format Article node\n  const articleData = $('Format Article').item(item.index)?.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from RSS Feeds' } }];\n}\n\nreturn articles;"
+        "jsCode": "// Collect ALL articles from Format Article across all loop iterations\nconst items = $('Format Article').all();\nconst articles = [];\n\nfor (const item of items) {\n  const articleData = item.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category,\n        feed_id: articleData.feed_id\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from RSS Feeds' } }];\n}\n\nreturn articles;"
       },
       "id": "return-articles",
       "name": "Return Articles",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1920,
-        96
+        720,
+        300
       ]
     }
   ],
@@ -228,8 +224,37 @@
         ]
       ]
     },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Fetch Enabled Feeds": {
       "main": [
+        [
+          {
+            "node": "Loop Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Feeds": {
+      "main": [
+        [
+          {
+            "node": "Return Articles",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Fetch RSS Feed",
@@ -276,17 +301,6 @@
       "main": [
         [
           {
-            "node": "Filter Valid Articles",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter Valid Articles": {
-      "main": [
-        [
-          {
             "node": "Update Feed Stats",
             "type": "main",
             "index": 0
@@ -298,7 +312,7 @@
       "main": [
         [
           {
-            "node": "Return Articles",
+            "node": "Loop Feeds",
             "type": "main",
             "index": 0
           }
@@ -324,4 +338,3 @@
     }
   ]
 }
-

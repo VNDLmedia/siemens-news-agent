@@ -1,4 +1,5 @@
 {
+  "id": "8KofFJBFS7WMl8eR",
   "name": "GHOSTWRITER: LinkedIn Posting",
   "nodes": [
     {
@@ -40,6 +41,53 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-posting",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "linkedin-webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        1456,
+        -1400
+      ],
+      "webhookId": "linkedin-posting-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "parse-raw-content",
+              "name": "raw_content",
+              "value": "={{ $json.raw_content || $json.body?.raw_content }}",
+              "type": "string"
+            },
+            {
+              "id": "parse-style",
+              "name": "style",
+              "value": "={{ $json.style || $json.body?.style || 'professional' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-webhook-input",
+      "name": "Parse Webhook Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -1400
+      ]
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "list",
@@ -73,8 +121,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
         }
       }
     },
@@ -105,6 +153,28 @@
   "pinData": {},
   "connections": {
     "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "GPT LinkedIn Ghostwriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Webhook Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Webhook Input": {
       "main": [
         [
           {

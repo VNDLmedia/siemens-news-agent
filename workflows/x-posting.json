@@ -1,4 +1,5 @@
 {
+  "id": "jmzMPebmVdBYKtLiHvpkc",
   "name": "GHOSTWRITER: X Posting",
   "nodes": [
     {
@@ -40,6 +41,53 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "x-posting",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "x-webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        -744
+      ],
+      "webhookId": "x-posting-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "parse-raw-content",
+              "name": "raw_content",
+              "value": "={{ $json.raw_content || $json.body?.raw_content }}",
+              "type": "string"
+            },
+            {
+              "id": "parse-style",
+              "name": "style",
+              "value": "={{ $json.style || $json.body?.style || 'professional' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-webhook-input",
+      "name": "Parse Webhook Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        -744
+      ]
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "mode": "list",
@@ -73,8 +121,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
         }
       }
     },
@@ -216,8 +264,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
         }
       }
     },
@@ -247,6 +295,28 @@
   },
   "connections": {
     "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "X Ghostwriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Webhook Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Webhook Input": {
       "main": [
         [
           {

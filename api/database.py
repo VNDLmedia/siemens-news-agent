@@ -142,6 +142,117 @@ async def set_feed_enabled(feed_id: str, enabled: bool) -> Optional[Dict[str, An
         return dict(row) if row else None
 
 
+# Search Query operations
+async def create_search_query(name: str, query: str, language: str, category: Optional[str], enabled: bool) -> Dict[str, Any]:
+    """Create a new search query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO search_queries (name, query, language, category, enabled)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, query, language, category, enabled, article_count, last_fetched, created_at, updated_at
+            """,
+            name, query, language, category, enabled
+        )
+        return dict(row)
+
+
+async def get_search_queries(enabled_only: bool = False) -> List[Dict[str, Any]]:
+    """Get all search queries."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        query = "SELECT * FROM search_queries"
+        if enabled_only:
+            query += " WHERE enabled = TRUE"
+        query += " ORDER BY created_at DESC"
+        rows = await conn.fetch(query)
+        return [dict(row) for row in rows]
+
+
+async def get_search_query_by_id(query_id: str) -> Optional[Dict[str, Any]]:
+    """Get a search query by ID."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM search_queries WHERE id = $1",
+            query_id
+        )
+        return dict(row) if row else None
+
+
+async def update_search_query(query_id: str, **kwargs) -> Optional[Dict[str, Any]]:
+    """Update a search query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Build update query dynamically
+        updates = []
+        values = []
+        param_num = 1
+        
+        for key, value in kwargs.items():
+            if value is not None:
+                updates.append(f"{key} = ${param_num}")
+                values.append(value)
+                param_num += 1
+        
+        if not updates:
+            return await get_search_query_by_id(query_id)
+        
+        values.append(query_id)
+        query = f"""
+            UPDATE search_queries
+            SET {', '.join(updates)}, updated_at = NOW()
+            WHERE id = ${param_num}
+            RETURNING *
+        """
+        row = await conn.fetchrow(query, *values)
+        return dict(row) if row else None
+
+
+async def delete_search_query(query_id: str) -> bool:
+    """Delete a search query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM search_queries WHERE id = $1",
+            query_id
+        )
+        return result == "DELETE 1"
+
+
+async def toggle_search_query_enabled(query_id: str) -> Optional[Dict[str, Any]]:
+    """Toggle search query enabled status."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE search_queries
+            SET enabled = NOT enabled, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            query_id
+        )
+        return dict(row) if row else None
+
+
+async def set_search_query_enabled(query_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+    """Set search query enabled status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE search_queries
+            SET enabled = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            query_id, enabled
+        )
+        return dict(row) if row else None
+
+
 # Article operations
 async def get_articles(
     source: Optional[str] = None,
@@ -206,6 +317,66 @@ async def delete_article(article_id: str) -> bool:
             article_id
         )
         return result == "DELETE 1"
+
+
+async def update_article(article_id: str, **kwargs) -> Optional[Dict[str, Any]]:
+    """Update an article."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        updates = []
+        values = []
+        param_num = 1
+        
+        for key, value in kwargs.items():
+            if value is not None:
+                updates.append(f"{key} = ${param_num}")
+                values.append(value)
+                param_num += 1
+        
+        if not updates:
+            return await get_article_by_id(article_id)
+        
+        values.append(article_id)
+        query = f"""
+            UPDATE articles
+            SET {', '.join(updates)}, updated_at = NOW()
+            WHERE id = ${param_num}
+            RETURNING *
+        """
+        row = await conn.fetchrow(query, *values)
+        return dict(row) if row else None
+
+
+async def set_article_sent(article_id: str, sent: bool = True) -> Optional[Dict[str, Any]]:
+    """Set article sent status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE articles
+            SET sent = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            article_id, sent
+        )
+        return dict(row) if row else None
+
+
+async def set_article_processed(article_id: str, processed: bool = True) -> Optional[Dict[str, Any]]:
+    """Set article processed status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE articles
+            SET processed = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            article_id, processed
+        )
+        return dict(row) if row else None
 
 
 # Recipient operations
@@ -302,6 +473,22 @@ async def toggle_recipient_enabled(recipient_id: str) -> Optional[Dict[str, Any]
         return dict(row) if row else None
 
 
+async def set_recipient_enabled(recipient_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+    """Set recipient enabled status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE digest_recipients
+            SET enabled = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            recipient_id, enabled
+        )
+        return dict(row) if row else None
+
+
 async def get_recipient_emails(recipient_ids: Optional[List[str]] = None) -> List[str]:
     """Get email addresses for sending digests.
     
@@ -337,6 +524,16 @@ async def get_statistics() -> Dict[str, Any]:
             """
         )
         
+        # Search query stats
+        search_query_stats = await conn.fetchrow(
+            """
+            SELECT 
+                COUNT(*) as total_search_queries,
+                COUNT(*) FILTER (WHERE enabled = TRUE) as enabled_search_queries
+            FROM search_queries
+            """
+        )
+        
         # Article stats
         article_stats = await conn.fetchrow(
             """
@@ -361,6 +558,8 @@ async def get_statistics() -> Dict[str, Any]:
         return {
             "total_feeds": feed_stats["total_feeds"],
             "enabled_feeds": feed_stats["enabled_feeds"],
+            "total_search_queries": search_query_stats["total_search_queries"],
+            "enabled_search_queries": search_query_stats["enabled_search_queries"],
             "total_articles": article_stats["total_articles"],
             "processed_articles": article_stats["processed_articles"],
             "sent_articles": article_stats["sent_articles"],

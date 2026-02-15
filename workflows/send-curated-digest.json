@@ -1,4 +1,5 @@
 {
+  "id": "send-curated-digest-workflow",
   "name": "Send Curated Digest",
   "nodes": [
     {
@@ -267,10 +268,23 @@
     },
     {
       "parameters": {
+        "jsCode": "// Pre-format article IDs for PostgreSQL array\nconst articleIds = $('Generate Siemens Email').first().json.article_ids || [];\n\n// Format as PostgreSQL UUID array\nconst formatted = articleIds.length > 0 \n  ? '{' + articleIds.join(',') + '}'\n  : '{}';\n\nreturn [{ json: { article_ids_array: formatted } }];"
+      },
+      "id": "prepare-article-ids",
+      "name": "Prepare Article IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        360
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE articles SET sent = TRUE WHERE id = ANY($1::uuid[])",
         "options": {
-          "queryReplacement": "={{ '{' + $('Generate Siemens Email').first().json.article_ids.join(',') + '}' }}"
+          "queryReplacement": "={{ $json.article_ids_array }}"
         }
       },
       "id": "mark-sent",
@@ -278,7 +292,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        2296,
+        2416,
         360
       ],
       "credentials": {
@@ -459,6 +473,17 @@
       ]
     },
     "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Article IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Article IDs": {
       "main": [
         [
           {

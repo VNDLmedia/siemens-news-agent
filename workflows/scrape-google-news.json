@@ -1,10 +1,11 @@
 {
+  "id": "TAwPcGi3EepKcWth",
   "name": "SCRAPER: Google News",
   "nodes": [
     {
       "parameters": {
-        "content": "## SCRAPER: Google News\n\n**Zweck:** Holt News von Google News RSS basierend auf Suchbegriffen aus der DB.\n\n### Ablauf\n1. Enabled Queries aus `search_queries` Tabelle laden\n2. Pro Query: Google News RSS abrufen\n3. XML parsen, Items extrahieren\n4. Max 15 Artikel pro Query\n5. Artikel formatieren für Pipeline\n6. Query-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-google-news\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"google_news\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`search_queries` - Suchbegriffe verwalten",
-        "height": 480,
+        "content": "## SCRAPER: Google News\n\n**Zweck:** Holt News von Google News RSS basierend auf Suchbegriffen aus der DB.\n\n### Ablauf\n1. Enabled Queries aus `search_queries` Tabelle laden\n2. Pro Query: Google News RSS abrufen (via Loop)\n3. XML parsen, Items extrahieren\n4. Max 15 Artikel pro Query\n5. Artikel formatieren für Pipeline\n6. Query-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-google-news\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"google_news\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`search_queries` - Suchbegriffe verwalten\n\n### Fix 2026-02-15\nAdded SplitInBatches loop to process\none query at a time (15 articles each).",
+        "height": 540,
         "width": 320
       },
       "id": "info-note",
@@ -54,6 +55,19 @@
     },
     {
       "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        384
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT id, name, query, language, category FROM search_queries WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 10",
         "options": {}
@@ -75,6 +89,20 @@
     },
     {
       "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-queries",
+      "name": "Loop Queries",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        96
+      ]
+    },
+    {
+      "parameters": {
         "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.query) }}&hl={{ $json.language || 'de' }}&gl={{ $json.language === 'en' ? 'US' : 'DE' }}&ceid={{ $json.language === 'en' ? 'US:en' : 'DE:de' }}",
         "options": {
           "response": {
@@ -90,7 +118,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        480,
+        720,
         96
       ],
       "continueOnFail": true
@@ -104,7 +132,7 @@
       "type": "n8n-nodes-base.xml",
       "typeVersion": 1,
       "position": [
-        720,
+        960,
         96
       ]
     },
@@ -118,7 +146,7 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        960,
+        1200,
         96
       ]
     },
@@ -131,29 +159,42 @@
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        1200,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Article aus RSS Item + Query Info zusammenstellen\nconst item = $input.first().json;\nconst queryData = $('Fetch Enabled Queries').item($item)?.json || {};\n\nconst title = item.title || 'Unbekannter Titel';\nconst link = item.link || '';\nconst pubDate = item.pubDate ? new Date(item.pubDate).toISOString() : null;\nconst sourceName = item.source && item.source._ ? item.source._ : 'Google News';\nconst description = item.description || '';\n\n// Content aus description extrahieren (HTML Tags entfernen)\nlet content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n\nreturn [{\n  json: {\n    url: link,\n    title: title,\n    content: content,\n    source: sourceName,\n    source_type: 'google_news',\n    published_at: pubDate,\n    language: queryData.language || 'de',\n    category: queryData.category || 'general',\n    query_name: queryData.name,\n    query_id: queryData.id\n  }\n}];"
-      },
-      "id": "format-article",
-      "name": "Format Article",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
         1440,
         96
       ]
     },
     {
       "parameters": {
+        "jsCode": "// Article aus RSS Item + Query Info zusammenstellen\n// Query data comes from the current Loop batch (1 query per iteration)\nconst items = $input.all();\nconst queryData = $('Loop Queries').first()?.json || {};\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  const title = data.title || 'Unbekannter Titel';\n  const link = data.link || '';\n  const pubDate = data.pubDate ? new Date(data.pubDate).toISOString() : null;\n  const sourceName = data.source && data.source._ ? data.source._ : 'Google News';\n  const description = data.description || '';\n  \n  // Content aus description extrahieren (HTML Tags entfernen)\n  let content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  \n  results.push({\n    json: {\n      url: link,\n      title: title,\n      content: content,\n      source: sourceName,\n      source_type: 'google_news',\n      published_at: pubDate,\n      language: queryData.language || 'de',\n      category: queryData.category || 'general',\n      query_name: queryData.name,\n      query_id: queryData.id\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "format-article",
+      "name": "Format Article",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect ALL articles from Format Article across all loop iterations\nconst items = $('Format Article').all();\nconst articles = [];\n\nfor (const item of items) {\n  const articleData = item.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category,\n        query_name: articleData.query_name,\n        query_id: articleData.query_id\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from Google News' } }];\n}\n\nreturn articles;"
+      },
+      "id": "return-articles",
+      "name": "Return Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE search_queries SET article_count = article_count + 1, last_fetched = NOW() WHERE id = $1",
+        "query": "UPDATE search_queries SET article_count = article_count + $2, last_fetched = NOW() WHERE id = $1",
         "options": {
-          "queryReplacement": "={{ $json.query_id }}"
+          "queryReplacement": "={{ $('Loop Queries').first().json.id }},={{ $input.all().length }}"
         }
       },
       "id": "update-query-stats",
@@ -161,7 +202,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1680,
+        1920,
         96
       ],
       "credentials": {
@@ -171,19 +212,6 @@
         }
       },
       "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Collect all articles and return them for the Pipeline\nconst items = $input.all();\nconst articles = [];\n\nfor (const item of items) {\n  // Get the original article data from Format Article node\n  const articleData = $('Format Article').item(item.index)?.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from Google News' } }];\n}\n\nreturn articles;"
-      },
-      "id": "return-articles",
-      "name": "Return Articles",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1920,
-        96
-      ]
     }
   ],
   "pinData": {},
@@ -210,8 +238,37 @@
         ]
       ]
     },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Fetch Enabled Queries": {
       "main": [
+        [
+          {
+            "node": "Loop Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Queries": {
+      "main": [
+        [
+          {
+            "node": "Return Articles",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Fetch Google News RSS",
@@ -280,7 +337,7 @@
       "main": [
         [
           {
-            "node": "Return Articles",
+            "node": "Loop Queries",
             "type": "main",
             "index": 0
           }

@@ -906,6 +906,278 @@ paths:
           description: Missing API key
         '403':
           description: Invalid API key
+  /api/search-queries:
+    post:
+      tags:
+      - Search Query Management
+      summary: Create Search Query Endpoint
+      description: Create a new search query.
+      operationId: create_search_query_endpoint_api_search_queries_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '400':
+          description: Search query with this query already exists
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Search Query Management
+      summary: List Search Queries
+      description: List all search queries.
+      operationId: list_search_queries_api_search_queries_get
+      parameters:
+      - name: enabled_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Enabled Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchQuery'
+                title: Response List Search Queries Api Search Queries Get
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/search-queries/{query_id}:
+    get:
+      tags:
+      - Search Query Management
+      summary: Get Search Query
+      description: Get a specific search query by ID.
+      operationId: get_search_query_api_search_queries__query_id__get
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Search Query Management
+      summary: Update Search Query Endpoint
+      description: Update a search query.
+      operationId: update_search_query_endpoint_api_search_queries__query_id__put
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Search Query Management
+      summary: Delete Search Query Endpoint
+      description: Delete a search query.
+      operationId: delete_search_query_endpoint_api_search_queries__query_id__delete
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: Response Delete Search Query Endpoint Api Search Queries  Query
+                  Id  Delete
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/search-queries/{query_id}/toggle:
+    patch:
+      tags:
+      - Search Query Management
+      summary: Toggle Search Query
+      description: Toggle the enabled status of a search query.
+      operationId: toggle_search_query_api_search_queries__query_id__toggle_patch
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/search-queries/{query_id}/enable:
+    patch:
+      tags:
+      - Search Query Management
+      summary: Enable Search Query
+      description: Enable a search query for scraping. Idempotent - safe to call multiple
+        times.
+      operationId: enable_search_query_api_search_queries__query_id__enable_patch
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/search-queries/{query_id}/disable:
+    patch:
+      tags:
+      - Search Query Management
+      summary: Disable Search Query
+      description: Disable a search query from scraping. Idempotent - safe to call
+        multiple times.
+      operationId: disable_search_query_api_search_queries__query_id__disable_patch
+      parameters:
+      - name: query_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Query Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchQuery'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Search query not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /:
     get:
       tags:
@@ -941,32 +1213,104 @@ components:
         source:
           type: string
           title: Source
+        source_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Type
         published_at:
           anyOf:
           - type: string
             format: date-time
           - type: 'null'
           title: Published At
-        summary_short:
+        fetched_at:
+          type: string
+          format: date-time
+          title: Fetched At
+        summary:
           anyOf:
           - type: string
           - type: 'null'
-          title: Summary Short
-        summary_long:
+          title: Summary
+        sentiment:
           anyOf:
           - type: string
           - type: 'null'
-          title: Summary Long
+          title: Sentiment
+        sentiment_score:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sentiment Score
+        priority:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Priority
+        priority_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Priority Reason
+        topics:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Topics
+        keywords:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Keywords
+        companies:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Companies
+        persons:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Persons
+        regions:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Regions
+        language:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Language
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        relevance_match:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Relevance Match
         processed:
           type: boolean
           title: Processed
         sent:
           type: boolean
           title: Sent
-        fetched_at:
-          type: string
-          format: date-time
-          title: Fetched At
         created_at:
           type: string
           format: date-time
@@ -982,12 +1326,24 @@ components:
       - url
       - content
       - source
+      - source_type
       - published_at
-      - summary_short
-      - summary_long
+      - fetched_at
+      - summary
+      - sentiment
+      - sentiment_score
+      - priority
+      - priority_reason
+      - topics
+      - keywords
+      - companies
+      - persons
+      - regions
+      - language
+      - category
+      - relevance_match
       - processed
       - sent
-      - fetched_at
       - created_at
       - updated_at
       title: Article
@@ -1022,16 +1378,11 @@ components:
           - type: string
           - type: 'null'
           title: Published At
-        summary_short:
+        summary:
           anyOf:
           - type: string
           - type: 'null'
-          title: Summary Short
-        summary_long:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Summary Long
+          title: Summary
         sent:
           type: boolean
           title: Sent
@@ -1330,6 +1681,116 @@ components:
           title: Feed Ids
       type: object
       title: ScrapeRequest
+    SearchQuery:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        query:
+          type: string
+          title: Query
+        language:
+          $ref: '#/components/schemas/FeedLanguage'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+        article_count:
+          type: integer
+          title: Article Count
+        last_fetched:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Fetched
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - name
+      - query
+      - language
+      - category
+      - enabled
+      - article_count
+      - last_fetched
+      - created_at
+      - updated_at
+      title: SearchQuery
+    SearchQueryCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Name
+        query:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Query
+        language:
+          allOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          default: de
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      type: object
+      required:
+      - name
+      - query
+      title: SearchQueryCreate
+    SearchQueryUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 1
+          - type: 'null'
+          title: Name
+        query:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 1
+          - type: 'null'
+          title: Query
+        language:
+          anyOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          - type: 'null'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+      type: object
+      title: SearchQueryUpdate
     SendDigestRequest:
       properties:
         recipient_ids:

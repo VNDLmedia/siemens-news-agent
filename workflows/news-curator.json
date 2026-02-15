@@ -1,4 +1,5 @@
 {
+  "id": "news-curator-workflow",
   "name": "CURATOR: News Curator",
   "nodes": [
     {
@@ -173,22 +174,21 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "operation": "complete",
-        "model": {
+        "modelId": {
           "__rl": true,
-          "value": "gpt-4o",
+          "value": "gpt-4o-mini",
           "mode": "list",
-          "cachedResultName": "gpt-4o"
+          "cachedResultName": "GPT-4O-MINI"
         },
         "messages": {
           "values": [
             {
-              "role": "system",
-              "content": "Du bist ein erfahrener News-Kurator. Deine Aufgabe ist es, aus einer Liste von Artikeln die besten für einen bestimmten Use-Case auszuwählen.\n\nANTWORTE NUR MIT EINEM JSON ARRAY der ausgewählten Artikel-Indices. Keine Erklärungen, kein anderer Text.\n\nFormat: [0, 3, 7, 12, 5]\n\nDie Zahlen sind die Index-Nummern der Artikel aus der Kandidatenliste."
+              "content": "Du bist ein erfahrener News-Kurator. Deine Aufgabe ist es, aus einer Liste von Artikeln die besten für einen bestimmten Use-Case auszuwählen.\n\nANTWORTE NUR MIT EINEM JSON ARRAY der ausgewählten Artikel-Indices. Keine Erklärungen, kein anderer Text.\n\nFormat: [0, 3, 7, 12, 5]\n\nDie Zahlen sind die Index-Nummern der Artikel aus der Kandidatenliste.",
+              "role": "=system"
             },
             {
-              "content": "=USE-CASE:\n{{ $json.usecase_prompt }}\n\nKANDIDATEN ({{ $json.candidate_count }} Artikel):\n{{ JSON.stringify($json.candidates, null, 2) }}\n\nWähle maximal {{ $json.max_articles }} Artikel aus und gib ihre Indices als JSON Array zurück."
+              "content": "=USE-CASE:\n{{ $json.usecase_prompt }}\n\nKANDIDATEN ({{ $json.candidate_count }} Artikel):\n{{ JSON.stringify($json.candidates, null, 2) }}\n\nWähle maximal {{ $json.max_articles }} Artikel aus und gib ihre Indices als JSON Array zurück.",
+              "role": "=user"
             }
           ]
         },
@@ -199,7 +199,7 @@
       },
       "id": "gpt-curate",
       "name": "GPT Curate Selection",
-      "type": "n8n-nodes-base.openAi",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
       "position": [
         1400,
@@ -207,8 +207,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
         }
       }
     },

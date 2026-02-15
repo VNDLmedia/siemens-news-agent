@@ -1,4 +1,5 @@
 {
+  "id": "scrape-pipeline-workflow",
   "name": "Scrape Pipeline",
   "nodes": [
     {
@@ -129,16 +130,16 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "not-empty",
-              "leftValue": "={{ $json._empty }}",
-              "rightValue": true,
+              "id": "has-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
               "operator": {
-                "type": "boolean",
-                "operation": "notTrue"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -209,10 +210,23 @@
     },
     {
       "parameters": {
+        "jsCode": "// Pre-format arrays for PostgreSQL insertion\nconst items = $input.all();\n\nreturn items.map(item => {\n  const d = item.json;\n  \n  // Helper to format array for PostgreSQL\n  const formatArray = (arr) => {\n    if (!arr || !Array.isArray(arr) || arr.length === 0) return '{}';\n    // Escape quotes and format as PostgreSQL array\n    const escaped = arr.map(v => String(v).replace(/\"/g, '\\\\\"'));\n    return '{\"' + escaped.join('\",\"') + '\"}';\n  };\n  \n  return {\n    json: {\n      url: d.url || '',\n      title: d.title || '',\n      content: d.content || '',\n      source: d.source || '',\n      source_type: d.source_type || '',\n      published_at: d.published_at || null,\n      summary: d.summary || '',\n      sentiment: d.sentiment || '',\n      sentiment_score: d.sentiment_score || null,\n      priority: d.priority || '',\n      priority_reason: d.priority_reason || '',\n      topics: formatArray(d.topics),\n      keywords: formatArray(d.keywords),\n      companies: formatArray(d.companies),\n      persons: formatArray(d.persons),\n      regions: formatArray(d.regions),\n      language: d.language || 'de',\n      category: d.category || 'general',\n      relevance_match: formatArray(d.relevance_match)\n    }\n  };\n});"
+      },
+      "id": "prepare-for-db",
+      "name": "Prepare for DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        144
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, TRUE, FALSE) ON CONFLICT (url) DO NOTHING",
         "options": {
-          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ '{' + ($json.topics || []).join(',') + '}' }},={{ '{' + ($json.keywords || []).join(',') + '}' }},={{ '{' + ($json.companies || []).join(',') + '}' }},={{ '{' + ($json.persons || []).join(',') + '}' }},={{ '{' + ($json.regions || []).join(',') + '}' }},={{ $json.language }},={{ $json.category }},={{ '{' + ($json.relevance_match || []).join(',') + '}' }}"
+          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ $json.topics }},={{ $json.keywords }},={{ $json.companies }},={{ $json.persons }},={{ $json.regions }},={{ $json.language }},={{ $json.category }},={{ $json.relevance_match }}"
         }
       },
       "id": "5873d7a4-d021-4b73-8907-330715d40130",
@@ -220,7 +234,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        960,
+        1200,
         144
       ],
       "credentials": {
@@ -240,7 +254,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1200,
+        1440,
         144
       ]
     }
@@ -324,6 +338,17 @@
       ]
     },
     "Normalize + Analyze": {
+      "main": [
+        [
+          {
+            "node": "Prepare for DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for DB": {
       "main": [
         [
           {

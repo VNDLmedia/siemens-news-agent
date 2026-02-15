@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Body
 from typing import Optional, List
-from models import ScrapeRequest, SendDigestRequest, SuccessResponse
+from models import ScrapeRequest, SendDigestRequest, PostingRequest, DiscoverFeedsRequest, SuccessResponse
 from security import verify_api_key
 from config import settings
 import httpx
@@ -138,4 +138,87 @@ async def trigger_send_digest(
     return SuccessResponse(
         success=True,
         message="Email digest workflow triggered successfully"
+    )
+
+
+@router.post("/linkedin-posting", response_model=SuccessResponse,
+             responses={**AUTH_RESPONSES, **N8N_ERROR_RESPONSES},
+             summary="Generate LinkedIn Post",
+             description="""Generate a LinkedIn post from news content.
+
+**Parameters:**
+- `raw_content`: News/article text to convert into a LinkedIn post
+- `style`: Post style - 'professional' (default), 'storytelling', 'engagement', 'informative', or 'provocative'
+
+Returns the generated post in the workflow response.
+""")
+async def trigger_linkedin_posting(
+    request: PostingRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """Trigger LinkedIn post generation workflow."""
+    payload = {
+        "raw_content": request.raw_content,
+        "style": request.style
+    }
+    await trigger_n8n_webhook("linkedin-posting", payload, timeout=60)
+    return SuccessResponse(
+        success=True,
+        message="LinkedIn post generation workflow triggered successfully"
+    )
+
+
+@router.post("/x-posting", response_model=SuccessResponse,
+             responses={**AUTH_RESPONSES, **N8N_ERROR_RESPONSES},
+             summary="Generate X/Twitter Post",
+             description="""Generate an X/Twitter post from news content.
+
+**Parameters:**
+- `raw_content`: News/article text to convert into an X post
+- `style`: Post style - 'professional' (default), 'provocative', or 'informative'
+
+The workflow validates the post length (max 280 characters) and retries if needed.
+Returns the generated post in the workflow response.
+""")
+async def trigger_x_posting(
+    request: PostingRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """Trigger X/Twitter post generation workflow."""
+    payload = {
+        "raw_content": request.raw_content,
+        "style": request.style
+    }
+    await trigger_n8n_webhook("x-posting", payload, timeout=60)
+    return SuccessResponse(
+        success=True,
+        message="X post generation workflow triggered successfully"
+    )
+
+
+@router.post("/discover-feeds", response_model=SuccessResponse,
+             responses={**AUTH_RESPONSES, **N8N_ERROR_RESPONSES},
+             summary="Discover RSS Feeds",
+             description="""Discover and validate RSS feeds for a topic or URL.
+
+**Parameters:**
+- `message`: Topic or URL to search for RSS feeds
+  - Example: "Automobilbranche" (topic)
+  - Example: "https://spiegel.de" (specific URL)
+
+The workflow uses AI to find relevant RSS feeds and validates them.
+Returns a JSON array of validated feeds with name, url, itemCount, and status.
+""")
+async def trigger_discover_feeds(
+    request: DiscoverFeedsRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """Trigger RSS feed discovery workflow."""
+    payload = {
+        "message": request.message
+    }
+    await trigger_n8n_webhook("discover-rss-feeds", payload, timeout=120)
+    return SuccessResponse(
+        success=True,
+        message="RSS feed discovery workflow triggered successfully"
     )

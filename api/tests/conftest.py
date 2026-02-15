@@ -26,6 +26,7 @@ INVALID_API_KEY = "wrong-key"
 # Track test-created resources for cleanup
 _test_feed_ids = []
 _test_article_ids = []
+_test_recipient_ids = []
 
 
 @pytest.fixture(scope="session")
@@ -75,6 +76,18 @@ def sample_feed():
 
 
 @pytest.fixture
+def sample_search_query():
+    """Sample search query data for creating test queries. Uses unique query per test."""
+    return {
+        "name": "Test Search Query",
+        "query": f"test query {uuid.uuid4()}",
+        "language": "en",
+        "category": "tech",
+        "enabled": True
+    }
+
+
+@pytest.fixture
 async def created_feed(client, valid_headers, sample_feed):
     """
     Create a feed for testing and clean it up afterwards.
@@ -91,6 +104,67 @@ async def created_feed(client, valid_headers, sample_feed):
     await client.delete(f"/api/feeds/{feed_id}", headers=valid_headers)
 
 
+@pytest.fixture
+async def created_search_query(client, valid_headers, sample_search_query):
+    """
+    Create a search query for testing and clean it up afterwards.
+    
+    Use this fixture when you need an existing search query in the database.
+    """
+    response = await client.post("/api/search-queries", json=sample_search_query, headers=valid_headers)
+    query = response.json()
+    query_id = query["id"]
+    
+    yield query
+    
+    # Cleanup: delete the search query after test
+    await client.delete(f"/api/search-queries/{query_id}", headers=valid_headers)
+
+
+@pytest.fixture
+def sample_recipient():
+    """Sample recipient data for creating test recipients. Uses unique email per test."""
+    return {
+        "email": f"test-{uuid.uuid4()}@example.com",
+        "name": "Test Recipient",
+        "enabled": True
+    }
+
+
+@pytest.fixture
+async def created_recipient(client, valid_headers, sample_recipient):
+    """
+    Create a recipient for testing and clean it up afterwards.
+    
+    Use this fixture when you need an existing recipient in the database.
+    """
+    response = await client.post("/api/recipients", json=sample_recipient, headers=valid_headers)
+    recipient = response.json()
+    recipient_id = recipient["id"]
+    
+    yield recipient
+    
+    # Cleanup: delete the recipient after test
+    await client.delete(f"/api/recipients/{recipient_id}", headers=valid_headers)
+
+
+@pytest.fixture
+async def created_article(client, valid_headers):
+    """
+    Get an existing article from the database for testing.
+    
+    If no articles exist, this will return None and tests should handle appropriately.
+    Note: Articles are created by workflows, not the API, so we can only test with existing articles.
+    """
+    response = await client.get("/api/articles?limit=1", headers=valid_headers)
+    articles = response.json()
+    
+    if articles:
+        yield articles[0]
+    else:
+        yield None
+
+
 @pytest.fixture(scope="module")
 async def db_cleanup():
     """
@@ -103,21 +177,31 @@ async def db_cleanup():
     pool = await get_pool()
     
     # Clean up test feeds (those with test URLs)
-    await pool.execute("""
-        DELETE FROM rss_sources 
-        WHERE url LIKE '%test-%' 
-           OR url LIKE '%example.com%'
-    """)
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            DELETE FROM rss_sources 
+            WHERE url LIKE '%test-%' 
+               OR url LIKE '%example.com%'
+        """)
+        await conn.execute("""
+            DELETE FROM search_queries 
+            WHERE query LIKE '%test query%'
+        """)
     
     yield
     
     # Post-module cleanup
     pool = await get_pool()
-    await pool.execute("""
-        DELETE FROM rss_sources 
-        WHERE url LIKE '%test-%' 
-           OR url LIKE '%example.com%'
-    """)
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            DELETE FROM rss_sources 
+            WHERE url LIKE '%test-%' 
+               OR url LIKE '%example.com%'
+        """)
+        await conn.execute("""
+            DELETE FROM search_queries 
+            WHERE query LIKE '%test query%'
+        """)
 
 
 @pytest.fixture

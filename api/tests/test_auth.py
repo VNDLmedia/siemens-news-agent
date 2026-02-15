@@ -7,13 +7,29 @@ import pytest
 
 # All endpoints that require authentication (from contract)
 PROTECTED_ENDPOINTS = [
+    # System
     ("GET", "/api/stats"),
+    # Feeds
     ("GET", "/api/feeds"),
     ("POST", "/api/feeds"),
+    # Search Queries
+    ("GET", "/api/search-queries"),
+    ("POST", "/api/search-queries"),
+    # Articles
     ("GET", "/api/articles"),
+    # Recipients
+    ("GET", "/api/recipients"),
+    ("POST", "/api/recipients"),
+    # Digest
+    ("GET", "/api/digest/preview"),
+    ("GET", "/api/digest/data"),
+    # Workflows
     ("POST", "/api/workflows/scrape"),
     ("POST", "/api/workflows/summarize"),
     ("POST", "/api/workflows/send-digest"),
+    ("POST", "/api/workflows/linkedin-posting"),
+    ("POST", "/api/workflows/x-posting"),
+    ("POST", "/api/workflows/discover-feeds"),
 ]
 
 

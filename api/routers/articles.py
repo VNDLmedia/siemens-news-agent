@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
-from models import Article
-from database import get_articles, get_article_by_id, delete_article
+from models import Article, ArticleUpdate
+from database import (
+    get_articles, get_article_by_id, delete_article,
+    update_article, set_article_sent, set_article_processed
+)
 from security import verify_api_key
 
 router = APIRouter(prefix="/api/articles", tags=["Article Management"])
@@ -49,6 +52,36 @@ async def get_article(
     return Article(**article)
 
 
+@router.put("/{article_id}", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def update_article_endpoint(
+    article_id: str,
+    article: ArticleUpdate,
+    api_key: str = Depends(verify_api_key)
+):
+    """Update an article's metadata."""
+    update_data = {}
+    if article.title is not None:
+        update_data["title"] = article.title
+    if article.summary is not None:
+        update_data["summary"] = article.summary
+    if article.priority is not None:
+        update_data["priority"] = article.priority
+    if article.category is not None:
+        update_data["category"] = article.category
+    if article.processed is not None:
+        update_data["processed"] = article.processed
+    if article.sent is not None:
+        update_data["sent"] = article.sent
+    
+    result = await update_article(article_id, **update_data)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+    return Article(**result)
+
+
 @router.delete("/{article_id}", response_model=dict, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
 async def delete_article_endpoint(
     article_id: str,
@@ -62,3 +95,63 @@ async def delete_article_endpoint(
             detail="Article not found"
         )
     return {"success": True, "message": "Article deleted successfully"}
+
+
+@router.patch("/{article_id}/mark-sent", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def mark_article_sent(
+    article_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Mark an article as sent. Idempotent - safe to call multiple times."""
+    result = await set_article_sent(article_id, sent=True)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+    return Article(**result)
+
+
+@router.patch("/{article_id}/mark-unsent", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def mark_article_unsent(
+    article_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Mark an article as unsent. Idempotent - safe to call multiple times."""
+    result = await set_article_sent(article_id, sent=False)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+    return Article(**result)
+
+
+@router.patch("/{article_id}/mark-processed", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def mark_article_processed(
+    article_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Mark an article as processed. Idempotent - safe to call multiple times."""
+    result = await set_article_processed(article_id, processed=True)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+    return Article(**result)
+
+
+@router.patch("/{article_id}/mark-unprocessed", response_model=Article, responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE})
+async def mark_article_unprocessed(
+    article_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Mark an article as unprocessed. Idempotent - safe to call multiple times."""
+    result = await set_article_processed(article_id, processed=False)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+    return Article(**result)

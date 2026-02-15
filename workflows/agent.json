@@ -1,4 +1,5 @@
 {
+  "id": "telegram-agent-workflow",
   "name": "Telegram Agent",
   "nodes": [
     {
@@ -37,9 +38,9 @@
       "parameters": {
         "model": {
           "__rl": true,
-          "value": "gpt-5.2",
+          "value": "gpt-4o",
           "mode": "list",
-          "cachedResultName": "gpt-5.2"
+          "cachedResultName": "gpt-4o"
         },
         "builtInTools": {},
         "options": {}
@@ -54,8 +55,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "ZUFeCKTYUWusW7hp",
-          "name": "OpenAi account"
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
         }
       }
     },

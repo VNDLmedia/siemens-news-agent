@@ -52,10 +52,16 @@ class TestStatsContract:
         # Required fields per contract
         assert "total_feeds" in data
         assert "enabled_feeds" in data
+        assert "total_search_queries" in data
+        assert "enabled_search_queries" in data
         assert "total_articles" in data
         assert "processed_articles" in data
         assert "sent_articles" in data
+        assert "total_recipients" in data
+        assert "enabled_recipients" in data
         
         # All counts should be integers >= 0
         assert isinstance(data["total_feeds"], int)
         assert data["total_feeds"] >= 0
+        assert isinstance(data["total_search_queries"], int)
+        assert data["total_search_queries"] >= 0

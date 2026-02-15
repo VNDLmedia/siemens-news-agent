@@ -130,3 +130,39 @@ async def toggle_recipient(
             detail="Recipient not found"
         )
     return Recipient(**result)
+
+
+@router.patch("/{recipient_id}/enable", response_model=Recipient,
+              responses={**AUTH_RESPONSES, 404: {"description": "Recipient not found"}},
+              summary="Enable Recipient",
+              description="Enable a recipient for receiving digests. Idempotent - safe to call multiple times.")
+async def enable_recipient(
+    recipient_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Enable a recipient for receiving digests."""
+    result = await database.set_recipient_enabled(recipient_id, enabled=True)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipient not found"
+        )
+    return Recipient(**result)
+
+
+@router.patch("/{recipient_id}/disable", response_model=Recipient,
+              responses={**AUTH_RESPONSES, 404: {"description": "Recipient not found"}},
+              summary="Disable Recipient",
+              description="Disable a recipient from receiving digests. Idempotent - safe to call multiple times.")
+async def disable_recipient(
+    recipient_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """Disable a recipient from receiving digests."""
+    result = await database.set_recipient_enabled(recipient_id, enabled=False)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipient not found"
+        )
+    return Recipient(**result)
