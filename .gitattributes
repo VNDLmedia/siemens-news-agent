@@ -1,0 +1,7 @@
+# Force Unix line endings for shell scripts (required for Docker)
+*.sh text eol=lf
+
+# Force Unix line endings for other config files used in containers
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.sql text eol=lf
