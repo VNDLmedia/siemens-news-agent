@@ -79,7 +79,8 @@ services:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:5678/healthz || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 120s  # Allow time for first-run provisioning (workflow imports, etc.)
     entrypoint: []
     command: ["sh", "/provision-n8n.sh"]
 
