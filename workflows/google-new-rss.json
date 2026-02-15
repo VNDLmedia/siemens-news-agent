@@ -1,0 +1,285 @@
+{
+  "name": "google news rss",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "topic"
+            }
+          ]
+        }
+      },
+      "id": "4ed5beac-2995-4b18-ab40-36f466aac6ab",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        3488,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Du bist ein Such-Experte. Der User gibt dir ein Thema in natürlicher Sprache. Deine Aufgabe: Erstelle so viele Google News Suchanfragen wie nötig um das Thema VOLLSTÄNDIG abzudecken.\n\nRegeln:\n- Einfaches Thema (eine Person, ein Produkt): 2-3 Queries\n- Mittleres Thema (Branche, Trend): 4-5 Queries\n- Komplexes Thema (Geopolitik, mehrdimensional): 6-8 Queries\n- Jede Query soll einen anderen Aspekt oder Blickwinkel abdecken\n- Mische deutsche und englische Queries wenn sinnvoll\n- Nutze verschiedene Synonyme und verwandte Begriffe\n- Maximum 8 Queries\n\nAnworte AUSSCHLIESSLICH mit einem JSON Array von Strings. Kein Markdown, keine Erklärung, kein Codeblock.\n\nBeispiel Input: \"Neuigkeiten zu Tesla\"\nBeispiel Output: [\"Tesla news 2026\",\"Tesla Aktie aktuell\",\"Elon Musk Tesla\"]\n\nBeispiel Input: \"Wie beeinflusst KI die europäische Wirtschaft?\"\nBeispiel Output: [\"AI impact European economy 2026\",\"KI Regulierung EU\",\"Künstliche Intelligenz Arbeitsmarkt Europa\",\"AI Act Auswirkungen Unternehmen\",\"KI Investitionen Europa\",\"AI Startups Europa Förderung\"]",
+              "role": "=system"
+            },
+            {
+              "content": "={{ $json.input || $json.topic || $json.searchTerm || $json.query || $json.message?.text || 'news' }}",
+              "role": "=user"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.3
+        }
+      },
+      "id": "5a16073a-6710-4410-a91a-88b36e9cc9ad",
+      "name": "Query Generator",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        3712,
+        -16
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.message.content.trim();\nconst queries = JSON.parse(raw);\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nconst originalTopic = triggerData.input || triggerData.topic || triggerData.searchTerm || triggerData.query || triggerData.message?.text || 'unknown';\n\nreturn queries.map(q => ({\n  json: {\n    query: q,\n    originalTopic: originalTopic\n  }\n}));"
+      },
+      "id": "685e8971-28b5-4606-81e8-706d35dce261",
+      "name": "Queries parsen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4096,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.query) }}&hl=de&gl=DE&ceid=DE:de",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "780c8680-f4b9-4908-8b26-e77c757381a6",
+      "name": "Google News RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4336,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c8f9854a-f14e-4175-8e27-40f473ed75f3",
+      "name": "XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rss.channel.item",
+        "options": {}
+      },
+      "id": "d85f4c38-7d2d-4407-a1e9-5e238caa1cde",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        4784,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 20
+      },
+      "id": "18d8c9c6-5ffe-4a54-a0ef-0f5deb942261",
+      "name": "Limit",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        5024,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst seen = new Set();\nlet artikelText = '';\nlet count = 0;\n\nfor (const item of items) {\n  const title = item.json.title || 'Kein Titel';\n  if (seen.has(title)) continue;\n  seen.add(title);\n  count++;\n  \n  const pubDate = item.json.pubDate || '';\n  const source = item.json.source && item.json.source._ ? item.json.source._ : '';\n  const link = item.json.link || '';\n  \n  artikelText += `${count}. ${title}`;\n  if (source) artikelText += ` (${source})`;\n  if (pubDate) artikelText += ` - ${pubDate}`;\n  artikelText += '\\n';\n}\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nconst topic = triggerData.input || triggerData.topic || triggerData.searchTerm || triggerData.query || triggerData.message?.text || 'unknown';\n\nreturn [{\n  json: {\n    artikelText: artikelText,\n    topic: topic,\n    artikelAnzahl: count\n  }\n}];"
+      },
+      "id": "621ba919-0045-4f87-bfde-47c6d07002de",
+      "name": "Artikel sammeln",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5248,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response-field",
+              "name": "response",
+              "value": "={{ $json.artikelText }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "15b58545-ecd0-4b77-8739-054f0648d1da",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5504,
+        -16
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Generator": {
+      "main": [
+        [
+          {
+            "node": "Queries parsen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queries parsen": {
+      "main": [
+        [
+          {
+            "node": "Google News RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google News RSS": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Artikel sammeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Artikel sammeln": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "any",
+    "binaryMode": "separate"
+  },
+  "versionId": "fb99d2d1-b7b9-4716-91ac-e608021fa23a",
+  "meta": {
+    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+  },
+  "id": "TAwPcGi3EepKcWth",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T11:06:54.397Z",
+      "createdAt": "2026-02-15T11:06:54.397Z",
+      "id": "gi9ovDnn7x6JU3OX",
+      "name": "tool"
+    }
+  ]
+}

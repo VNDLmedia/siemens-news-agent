@@ -1,0 +1,123 @@
+{
+  "name": "Input Chanells",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "bfc5ba74-4a2b-482c-b491-5ed515428287",
+      "name": "Telegram Trigger1",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        -64
+      ],
+      "webhookId": "telegram-webhook-id",
+      "alwaysOutputData": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "news-agent-telegram",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "BNXo6bCpMYb64VluuZNSY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/BNXo6bCpMYb64VluuZNSY",
+          "cachedResultName": "Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "input": "={{ $json.message.text }}",
+            "telegram_chat_id": "={{ $json.message.chat.id }}+\"\""
+          },
+          "matchingColumns": [
+            "input"
+          ],
+          "schema": [
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "telegram_chat_id",
+              "displayName": "telegram_chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -64
+      ],
+      "id": "3eb6094b-a9f6-431d-ad83-d51de4f673d0",
+      "name": "Call 'Agent'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Call 'Agent'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1cbf2e3c-0fe9-4d58-a0e3-1a5aca0fee78",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+  },
+  "id": "nPtpboRoi_nidCEORStvl",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T11:07:12.404Z",
+      "createdAt": "2026-02-15T11:07:12.404Z",
+      "id": "KP0lsrpf0c6ve7Mu",
+      "name": "input"
+    },
+    {
+      "updatedAt": "2026-02-15T11:06:45.886Z",
+      "createdAt": "2026-02-15T11:06:45.886Z",
+      "id": "y0703l5B1OPtw1gh",
+      "name": "sub-workflow"
+    }
+  ]
+}

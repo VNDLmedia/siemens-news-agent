@@ -56,6 +56,9 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       
+      # Telegram Bot (for input channel)
+      TELEGRAM_ACCESS_TOKEN: ${TELEGRAM_ACCESS_TOKEN:-}
+      
       # Credential provisioning variables
       CRED_POSTGRES_DB: ${POSTGRES_DB:-news_agent}
       CRED_POSTGRES_USER: ${POSTGRES_USER:-n8n}

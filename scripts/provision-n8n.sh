@@ -89,6 +89,23 @@ else
     echo "Skipped: SMTP credential (SMTP_HOST not set)"
 fi
 
+# Telegram credential (only if access token provided)
+if [ -n "$TELEGRAM_ACCESS_TOKEN" ]; then
+    cat > /tmp/creds/telegram.json << EOF
+{
+  "id": "news-agent-telegram",
+  "name": "Telegram Bot",
+  "type": "telegramApi",
+  "data": {
+    "accessToken": "${TELEGRAM_ACCESS_TOKEN}"
+  }
+}
+EOF
+    echo "Generated: Telegram credential"
+else
+    echo "Skipped: Telegram credential (TELEGRAM_ACCESS_TOKEN not set)"
+fi
+
 # Step 3: Import credentials
 echo ""
 echo "[3/4] Importing credentials..."

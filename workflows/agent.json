@@ -1,0 +1,339 @@
+{
+  "name": "Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.input }}",
+        "options": {
+          "systemMessage": "Du bist ein News-Assistent auf Telegram.\n\nABLAUF BEI JEDER NACHRICHT:\n1. Sende sofort eine Telegram-Nachricht dass du arbeitest\n2. Erkenne was der User will (News, X Post, LinkedIn Post)\n3. Führe die passenden Tools aus\n4. Sende das Ergebnis per Telegram an den User\n\nNEWS-ABRUF:\n- Rufe das Google RSS Tool mit dem Thema auf\n- Formatiere die Ergebnisse übersichtlich mit Emojis\n- Sende per Telegram\n\nX/TWITTER POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das X Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nLINKEDIN POST:\n- Zuerst News über das RSS Tool holen (falls nicht schon geschehen)\n- Die News als raw_content + gewünschten style an das LinkedIn Posting Tool übergeben\n- Den generierten Post UNVERÄNDERT per Telegram senden\n\nREGELN:\n- JEDE Antwort MUSS über das Telegram Tool gesendet werden — ohne Telegram sieht der User nichts\n- chatId ist vorgesetzt, fülle nur 'message'\n- Wenn der User keinen Style angibt, nutze 'professional' als Default\n- Gib Posts von X/LinkedIn Tools immer 1:1 weiter, nicht umformulieren\n\n\nAM ENDE IMMER DIE ERGEBNISSE VIA TELEGRAM MIT DEM USER TEILEN!"
+        }
+      },
+      "id": "875a1ba0-2651-484a-8527-954aac2421d4",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        4544,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "47a7be01-d2a3-40e1-a475-c3fd64f08c75",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        4544,
+        1120
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "={{ $fromAI('message', 'Die formatierte Nachricht die an den User gesendet werden soll. Bei News: übersichtlich mit Emojis. Bei X/LinkedIn Posts: den generierten Post unverändert.', 'string') }}",
+        "additionalFields": {}
+      },
+      "id": "6471141d-69d5-43d3-9dfa-d70972c31791",
+      "name": "Telegram Tool",
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        5008,
+        1136
+      ],
+      "webhookId": "09a97143-dc61-46ea-9e39-66a3066999ce",
+      "credentials": {
+        "telegramApi": {
+          "id": "news-agent-telegram",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "TAwPcGi3EepKcWth",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/TAwPcGi3EepKcWth",
+          "cachedResultName": "google news rss"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('topic', `Das Thema zu dem Google News RSS Ergebnisse abgerufen werden sollen, z.B. \"Siemens Quartalszahlen\" oder \"KI Regulierung EU\"`, 'string') }}"
+          },
+          "matchingColumns": [
+            "topic"
+          ],
+          "schema": [
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        4912,
+        1328
+      ],
+      "id": "faa4c29e-7a8a-4943-b8a8-48ebe9af6772",
+      "name": "Call 'google news rss'1"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "input"
+            },
+            {
+              "name": "telegram_chat_id"
+            }
+          ]
+        }
+      },
+      "id": "594f4960-a13f-4f77-9546-9c1c732c9510",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        4336,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Generiert einen X/Twitter Post basierend auf News-Content. Nutze dieses Tool wenn der User einen X Post, Tweet oder Twitter Post will. Zuerst immer News per RSS holen, dann dieses Tool mit dem Content aufrufen.",
+        "workflowId": {
+          "__rl": true,
+          "value": "jmzMPebmVdBYKtLiHvpkc",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/jmzMPebmVdBYKtLiHvpkc",
+          "cachedResultName": "x posting"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "style": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('x_style', `Der gewünschte Ton des X Posts. Optionen: \"professional\", \"provocative\", \"informative\". Default: \"professional\"`, 'string') }}",
+            "raw_content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('x_raw_content', `Der News-Content aus dem RSS Tool der in einen X Post umgewandelt werden soll. Übergib die komplette News-Zusammenfassung.`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "raw_content",
+              "displayName": "raw_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "style",
+              "displayName": "style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        4816,
+        1488
+      ],
+      "id": "6ee804b0-93d3-47c9-ac6d-578e15e90a04",
+      "name": "Call 'x posting'"
+    },
+    {
+      "parameters": {
+        "description": "Generiert einen LinkedIn Post basierend auf News-Content. Nutze dieses Tool wenn der User einen LinkedIn Post will. Zuerst immer News per RSS holen, dann dieses Tool mit dem Content aufrufen.",
+        "workflowId": {
+          "__rl": true,
+          "value": "8KofFJBFS7WMl8eR",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8KofFJBFS7WMl8eR",
+          "cachedResultName": "linkedin posting"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "raw_content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('raw_content', `Der News-Content aus dem RSS Tool der in einen LinkedIn Post umgewandelt werden soll. Übergib die komplette News-Zusammenfassung.\n`, 'string') }}",
+            "style": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('style', `Der gewünschte Ton des LinkedIn Posts. Optionen: \"professional\", \"storytelling\", \"engagement\", \"informative\", \"provocative\". Default: \"professional\"`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "raw_content",
+              "displayName": "raw_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "style",
+              "displayName": "style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        4704,
+        1632
+      ],
+      "id": "02f6ea1e-3845-4fb6-935b-adbfab5fb281",
+      "name": "Call 'linkedin posting'"
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "input": "was geht grade bei nvdia? neue grafikkarten in planung?",
+          "telegram_chat_id": "8407142561"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'google news rss'1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'x posting'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'linkedin posting'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e5b8495c-a789-45a3-8ec4-29b7e5b2ec91",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+  },
+  "id": "BNXo6bCpMYb64VluuZNSY",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T11:07:28.202Z",
+      "createdAt": "2026-02-15T11:07:28.202Z",
+      "id": "cLLyuZC8cXMTqna1",
+      "name": "agent"
+    },
+    {
+      "updatedAt": "2026-02-15T11:06:45.886Z",
+      "createdAt": "2026-02-15T11:06:45.886Z",
+      "id": "y0703l5B1OPtw1gh",
+      "name": "sub-workflow"
+    }
+  ]
+}
