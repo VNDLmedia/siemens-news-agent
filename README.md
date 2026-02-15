@@ -1,4 +1,6 @@
-# News AI Agent
+# AI News agent
+
+Automated news aggregation and distribution system built on n8n workflows. Ingests articles from RSS feeds, stores them in PostgreSQL, and publishes summaries to configured output channels (email, LinkedIn, X).
 
 ## Quick Start
 
@@ -10,7 +12,7 @@ cp env.example .env
 
 2. Edit .env with your credentials
 
-3. Start containers
+3. Start container
 
 ```bash
 docker compose up -d
@@ -99,14 +101,29 @@ Feeds are inserted on first database initialization. Categories: general, busine
 
 Script fetches latest spec from running API and updates `openapi.yaml`.
 
-### Importing to Postman
+### Using the OpenAPI Spec
 
-1. Open Postman
-2. Import → File → Select `openapi.yaml`
-3. Create environment with variable `API_KEY` = your key
-4. In collection, add pre-request script or set header manually:
+The `openapi.yaml` file follows the [OpenAPI 3.0 Specification](https://spec.openapis.org/oas/v3.0.3), an industry standard for describing REST APIs. Most HTTP clients and API testing tools can import it directly:
+
+| Tool | Import Method |
+|------|---------------|
+| **Postman** | Import → File → Select `openapi.yaml` |
+| **Insomnia** | Create → Import from File |
+| **Bruno** | Collection → Import Collection → OpenAPI |
+| **Hoppscotch** | Import → OpenAPI |
+| **Thunder Client** (VS Code) | Collections → Import → OpenAPI |
+| **HTTPie Desktop** | Import → OpenAPI |
+| **Swagger UI** | Already served at `/docs` when API is running |
+
+#### Postman Setup
+
+1. Import `openapi.yaml` as described above
+2. Create environment with variable `API_KEY` = your key
+3. In collection, add pre-request script or set header manually:
    ```
    X-API-Key: {{API_KEY}}
    ```
 
 Alternatively, use built-in API Key auth in collection settings.
+
+> **Note:** OpenAPI is widely adopted—if your preferred tool isn't listed, check its docs for "OpenAPI" or "Swagger" import. The terms are often used interchangeably (Swagger was renamed to OpenAPI in 2016).
