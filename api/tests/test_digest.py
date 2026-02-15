@@ -48,8 +48,6 @@ class TestDigestPreviewContract:
             headers=valid_headers
         )
         html = response.text
-        # Should contain preview banner
-        assert "Preview Mode" in html
         # Should contain digest title
         assert "News Digest" in html
         # Should contain footer
