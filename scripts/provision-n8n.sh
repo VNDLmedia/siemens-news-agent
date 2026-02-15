@@ -22,15 +22,11 @@ echo "========================================"
 # Wait for database to be ready
 sleep 5
 
-# Step 1: Import workflows
+# =====================================================
+# Step 1: Generate credentials from environment
+# =====================================================
 echo ""
-echo "[1/4] Importing workflows..."
-n8n import:workflow --separate --input=/workflows/
-echo "Workflows imported!"
-
-# Step 2: Generate credentials from environment
-echo ""
-echo "[2/4] Generating credentials from environment..."
+echo "[1/5] Generating credentials from environment..."
 mkdir -p /tmp/creds
 
 # Postgres credential (always created)
@@ -49,7 +45,7 @@ cat > /tmp/creds/postgres.json << EOF
   }
 }
 EOF
-echo "Generated: Postgres credential"
+echo "  ✓ Postgres credential"
 
 # OpenAI credential (only if API key provided)
 if [ -n "$OPENAI_API_KEY" ]; then
@@ -63,9 +59,9 @@ if [ -n "$OPENAI_API_KEY" ]; then
   }
 }
 EOF
-    echo "Generated: OpenAI credential"
+    echo "  ✓ OpenAI credential"
 else
-    echo "Skipped: OpenAI credential (OPENAI_API_KEY not set)"
+    echo "  ⊘ OpenAI credential (OPENAI_API_KEY not set)"
 fi
 
 # SMTP credential (only if host provided)
@@ -84,9 +80,9 @@ if [ -n "$SMTP_HOST" ]; then
   }
 }
 EOF
-    echo "Generated: SMTP credential"
+    echo "  ✓ SMTP credential"
 else
-    echo "Skipped: SMTP credential (SMTP_HOST not set)"
+    echo "  ⊘ SMTP credential (SMTP_HOST not set)"
 fi
 
 # Telegram credential (only if access token provided)
@@ -101,25 +97,72 @@ if [ -n "$TELEGRAM_ACCESS_TOKEN" ]; then
   }
 }
 EOF
-    echo "Generated: Telegram credential"
+    echo "  ✓ Telegram credential"
 else
-    echo "Skipped: Telegram credential (TELEGRAM_ACCESS_TOKEN not set)"
+    echo "  ⊘ Telegram credential (TELEGRAM_ACCESS_TOKEN not set)"
 fi
 
-# Step 3: Import credentials
+# =====================================================
+# Step 2: Import credentials (must happen before workflows)
+# =====================================================
 echo ""
-echo "[3/4] Importing credentials..."
+echo "[2/5] Importing credentials..."
 n8n import:credentials --separate --input=/tmp/creds/
-
-# Secure cleanup
 rm -rf /tmp/creds
-echo "Credentials imported and temp files cleaned!"
+echo "Credentials imported!"
 
-# Step 4: Activate workflows
+# =====================================================
+# Step 3: Prepare workflows with correct credential IDs
+# =====================================================
 echo ""
-echo "[4/4] Activating workflows..."
+echo "[3/5] Preparing workflows with credential mapping..."
+mkdir -p /tmp/workflows
+
+# Copy all workflow files
+cp /workflows/*.json /tmp/workflows/ 2>/dev/null || true
+
+# Rewrite credential references in all workflow files
+# Maps any credential ID to our provisioned credential IDs based on type
+for wf in /tmp/workflows/*.json; do
+    [ -f "$wf" ] || continue
+    
+    echo "  Processing: $(basename "$wf")"
+    
+    # Use sed to replace credential IDs based on credential type
+    # Pattern: "credType": { "id": "anything", "name": "anything" }
+    # Replace with our known credential IDs
+    
+    # OpenAI credentials -> news-agent-openai
+    sed -i 's/"openAiApi"[[:space:]]*:[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*"[^"]*"/"openAiApi": { "id": "news-agent-openai"/g' "$wf"
+    
+    # Postgres credentials -> news-agent-postgres  
+    sed -i 's/"postgres"[[:space:]]*:[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*"[^"]*"/"postgres": { "id": "news-agent-postgres"/g' "$wf"
+    
+    # SMTP credentials -> news-agent-smtp
+    sed -i 's/"smtp"[[:space:]]*:[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*"[^"]*"/"smtp": { "id": "news-agent-smtp"/g' "$wf"
+    
+    # Telegram credentials -> news-agent-telegram
+    sed -i 's/"telegramApi"[[:space:]]*:[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*"[^"]*"/"telegramApi": { "id": "news-agent-telegram"/g' "$wf"
+done
+
+echo "Credential mappings applied!"
+
+# =====================================================
+# Step 4: Import workflows
+# =====================================================
+echo ""
+echo "[4/5] Importing workflows..."
+n8n import:workflow --separate --input=/tmp/workflows/
+rm -rf /tmp/workflows
+echo "Workflows imported!"
+
+# =====================================================
+# Step 5: Activate workflows
+# =====================================================
+echo ""
+echo "[5/5] Activating workflows..."
 for wfid in $(n8n list:workflow 2>/dev/null | cut -d'|' -f1); do
-    echo "Activating workflow: $wfid"
+    echo "  Activating: $wfid"
     n8n update:workflow --id="$wfid" --active=true 2>/dev/null || true
 done
 
