@@ -398,6 +398,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Article Management
+      summary: Update Article Endpoint
+      description: Update an article's metadata.
+      operationId: update_article_endpoint_api_articles__article_id__put
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
       - Article Management
@@ -419,6 +457,140 @@ paths:
               schema:
                 type: object
                 title: Response Delete Article Endpoint Api Articles  Article Id  Delete
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles/{article_id}/mark-sent:
+    patch:
+      tags:
+      - Article Management
+      summary: Mark Article Sent
+      description: Mark an article as sent. Idempotent - safe to call multiple times.
+      operationId: mark_article_sent_api_articles__article_id__mark_sent_patch
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles/{article_id}/mark-unsent:
+    patch:
+      tags:
+      - Article Management
+      summary: Mark Article Unsent
+      description: Mark an article as unsent. Idempotent - safe to call multiple times.
+      operationId: mark_article_unsent_api_articles__article_id__mark_unsent_patch
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles/{article_id}/mark-processed:
+    patch:
+      tags:
+      - Article Management
+      summary: Mark Article Processed
+      description: Mark an article as processed. Idempotent - safe to call multiple
+        times.
+      operationId: mark_article_processed_api_articles__article_id__mark_processed_patch
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Article not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/articles/{article_id}/mark-unprocessed:
+    patch:
+      tags:
+      - Article Management
+      summary: Mark Article Unprocessed
+      description: Mark an article as unprocessed. Idempotent - safe to call multiple
+        times.
+      operationId: mark_article_unprocessed_api_articles__article_id__mark_unprocessed_patch
+      parameters:
+      - name: article_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
         '401':
           description: Missing API key
         '403':
@@ -635,6 +807,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/recipients/{recipient_id}/enable:
+    patch:
+      tags:
+      - Recipient Management
+      summary: Enable Recipient
+      description: Enable a recipient for receiving digests. Idempotent - safe to
+        call multiple times.
+      operationId: enable_recipient_api_recipients__recipient_id__enable_patch
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/recipients/{recipient_id}/disable:
+    patch:
+      tags:
+      - Recipient Management
+      summary: Disable Recipient
+      description: Disable a recipient from receiving digests. Idempotent - safe to
+        call multiple times.
+      operationId: disable_recipient_api_recipients__recipient_id__disable_patch
+      parameters:
+      - name: recipient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipient Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipient'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: Recipient not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/digest/preview:
     get:
       tags:
@@ -675,6 +915,37 @@ paths:
             text/html:
               schema:
                 type: string
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/digest/render:
+    post:
+      tags:
+      - Digest
+      summary: Render Digest HTML
+      description: Render digest HTML for a provided article list. Used by n8n send
+        workflow and serves as single source of truth for digest email generation.
+      operationId: render_digest_api_digest_render_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DigestRenderRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestRenderResponse'
         '401':
           description: Missing API key
         '403':
@@ -851,6 +1122,136 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SendDigestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/workflows/linkedin-posting:
+    post:
+      tags:
+      - Workflows
+      summary: Generate LinkedIn Post
+      description: 'Generate a LinkedIn post from news content.
+
+
+        **Parameters:**
+
+        - `raw_content`: News/article text to convert into a LinkedIn post
+
+        - `style`: Post style - ''professional'' (default), ''storytelling'', ''engagement'',
+        ''informative'', or ''provocative''
+
+
+        Returns the generated post in the workflow response.'
+      operationId: trigger_linkedin_posting_api_workflows_linkedin_posting_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/workflows/x-posting:
+    post:
+      tags:
+      - Workflows
+      summary: Generate X/Twitter Post
+      description: 'Generate an X/Twitter post from news content.
+
+
+        **Parameters:**
+
+        - `raw_content`: News/article text to convert into an X post
+
+        - `style`: Post style - ''professional'' (default), ''provocative'', or ''informative''
+
+
+        The workflow validates the post length (max 280 characters) and retries if
+        needed.
+
+        Returns the generated post in the workflow response.'
+      operationId: trigger_x_posting_api_workflows_x_posting_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostingRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '502':
+          description: n8n webhook returned error
+        '503':
+          description: n8n service unavailable or timeout
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/workflows/discover-feeds:
+    post:
+      tags:
+      - Workflows
+      summary: Discover RSS Feeds
+      description: "Discover and validate RSS feeds for a topic or URL.\n\n**Parameters:**\n\
+        - `message`: Topic or URL to search for RSS feeds\n  - Example: \"Automobilbranche\"\
+        \ (topic)\n  - Example: \"https://spiegel.de\" (specific URL)\n\nThe workflow\
+        \ uses AI to find relevant RSS feeds and validates them.\nReturns a JSON array\
+        \ of validated feeds with name, url, itemCount, and status."
+      operationId: trigger_discover_feeds_api_workflows_discover_feeds_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverFeedsRequest'
         required: true
       responses:
         '200':
@@ -1347,6 +1748,45 @@ components:
       - created_at
       - updated_at
       title: Article
+    ArticleUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 1
+          - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary
+        priority:
+          anyOf:
+          - type: string
+            pattern: ^(high|medium|low)$
+          - type: 'null'
+          title: Priority
+        category:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Category
+        processed:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Processed
+        sent:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Sent
+      type: object
+      title: ArticleUpdate
+      description: Update an existing article.
     Body_trigger_summarize_api_workflows_summarize_post:
       properties:
         article_ids:
@@ -1419,6 +1859,77 @@ components:
       - articles
       title: DigestDataResponse
       description: Response for digest data endpoint.
+    DigestRenderRequest:
+      properties:
+        articles:
+          items:
+            type: object
+          type: array
+          title: Articles
+        total_candidates:
+          type: integer
+          title: Total Candidates
+          default: 0
+        usecase:
+          type: string
+          title: Usecase
+          default: daily_newsletter
+        recipient_emails:
+          items:
+            type: string
+          type: array
+          title: Recipient Emails
+      type: object
+      title: DigestRenderRequest
+      description: Payload for rendering digest HTML from a specific curated article
+        set.
+    DigestRenderResponse:
+      properties:
+        html_content:
+          type: string
+          title: Html Content
+        article_count:
+          type: integer
+          title: Article Count
+        article_ids:
+          items:
+            type: string
+          type: array
+          title: Article Ids
+        recipient_emails:
+          items:
+            type: string
+          type: array
+          title: Recipient Emails
+        recipient_count:
+          type: integer
+          title: Recipient Count
+        subject:
+          type: string
+          title: Subject
+      type: object
+      required:
+      - html_content
+      - article_count
+      - article_ids
+      - recipient_emails
+      - recipient_count
+      - subject
+      title: DigestRenderResponse
+      description: Rendered digest payload used by n8n email sending.
+    DiscoverFeedsRequest:
+      properties:
+        message:
+          type: string
+          minLength: 1
+          title: Message
+          description: Topic or URL to search for RSS feeds, e.g. 'Automobilbranche'
+            or 'https://spiegel.de'
+      type: object
+      required:
+      - message
+      title: DiscoverFeedsRequest
+      description: Request to discover RSS feeds.
     Feed:
       properties:
         id:
@@ -1589,6 +2100,27 @@ components:
       - n8n
       - timestamp
       title: HealthResponse
+    PostingRequest:
+      properties:
+        raw_content:
+          type: string
+          minLength: 1
+          title: Raw Content
+          description: News/article content to convert into a post
+        style:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Style
+          description: 'Post style: ''professional'', ''provocative'', ''informative''
+            (X) or ''professional'', ''storytelling'', ''engagement'', ''informative'',
+            ''provocative'' (LinkedIn)'
+          default: professional
+      type: object
+      required:
+      - raw_content
+      title: PostingRequest
+      description: Request to generate a social media post.
     Recipient:
       properties:
         id:
@@ -1822,6 +2354,12 @@ components:
         enabled_feeds:
           type: integer
           title: Enabled Feeds
+        total_search_queries:
+          type: integer
+          title: Total Search Queries
+        enabled_search_queries:
+          type: integer
+          title: Enabled Search Queries
         total_articles:
           type: integer
           title: Total Articles
@@ -1841,6 +2379,8 @@ components:
       required:
       - total_feeds
       - enabled_feeds
+      - total_search_queries
+      - enabled_search_queries
       - total_articles
       - processed_articles
       - sent_articles
