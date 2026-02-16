@@ -226,7 +226,7 @@
         "jsCode": "const items = $input.all();\nconst total = items.length;\nconst dupes = items.filter(i => i.json.affectedRows === 0).length;\nconst failed = items.filter(i => i.json.error).length;\nconst inserted = total - dupes - failed;\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total,\n    inserted,\n    duplicates: dupes,\n    failed,\n    message: `${inserted} neu, ${dupes} Duplikate, ${failed} Fehler`\n  }\n}];"
       },
       "id": "e9819b61-33cb-4e9f-ba06-f0aba1b0d014",
-      "name": "Ergebnis",
+      "name": "Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -352,7 +352,7 @@
       "main": [
         [
           {
-            "node": "Ergebnis",
+            "node": "Results",
             "type": "main",
             "index": 0
           }
