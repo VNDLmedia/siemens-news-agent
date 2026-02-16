@@ -1,6 +1,11 @@
-# AI News agent
+# AI News Agent
 
 Automated news aggregation and distribution system built on n8n workflows. Ingests articles from RSS feeds, stores them in PostgreSQL, and publishes summaries to configured output channels (email, LinkedIn, X).
+
+## Prerequisites
+
+- Docker 20.10+
+- Docker Compose v2
 
 ## Quick Start
 
@@ -20,6 +25,24 @@ docker compose up -d
 
 Visit `http://localhost:5678` to create n8n admin account (required on first startup).
 
+## Workflows
+
+| Workflow | Purpose |
+|----------|---------|
+| **Agent** | Telegram bot interface for user interaction |
+| **SCRAPER: Scrape Pipeline** | Orchestrates RSS + Google News scraping every 15 min |
+| **SCRAPER: RSS Feeds** | Fetches articles from configured RSS sources |
+| **SCRAPER: Google News** | Fetches articles from Google News RSS |
+| **SCRAPER: Normalize Articles** | GPT-powered article analysis and enrichment |
+| **CURATOR: News Curator** | AI agent that selects and curates articles |
+| **GHOSTWRITER: Social Media** | Generates LinkedIn/X posts from article content |
+| **TOOL: Retrieve Articles** | Database query tool for other workflows |
+| **TOOL: Send Curated Email Digest** | Sends curated articles via email |
+| **UPDATER: RSS Feed Discovery** | Finds and adds new RSS feeds via AI |
+| **UPDATER: RSS Feed Validator** | Validates RSS feed URLs |
+
+> **Note:** Each workflow contains a sticky note with detailed documentation. Open the workflow in n8n to see full implementation details.
+
 ## Environment Variables
 
 **Required:**
@@ -29,6 +52,7 @@ Visit `http://localhost:5678` to create n8n admin account (required on first sta
 - `OPENAI_API_KEY` - OpenAI or compatible API key ([get one](https://platform.openai.com/api-keys))
 
 **Optional:**
+- `TELEGRAM_ACCESS_TOKEN` - Telegram Bot token for the agent ([get from @BotFather](https://t.me/botfather))
 - `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` - SMTP server for email digests
   - Gmail requires App Password (not regular password): [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
 - `TIMEZONE` - Default: `Europe/Berlin`
@@ -88,18 +112,6 @@ After obtaining your public URL:
 
 > **Note:** Tunnel URLs change on restart. For persistent webhooks, deploy to a server with a static public IP or use a paid tunnel plan with reserved domains.
 
-## LLM Mock Mode
-
-To test workflows without burning OpenAI credits:
-
-1. Open n8n UI (`http://localhost:5678`)
-2. Edit workflow: "Summarize Articles"
-3. Find node: "Check Mock Mode"
-4. Change `MOCK_MODE_ENABLED = false` to `true`
-5. Save workflow
-
-When enabled, generates `[MOCK]` summaries instead of calling OpenAI.
-
 ## Managing Email Recipients
 
 Recipients are stored in database and managed via API:
@@ -130,6 +142,19 @@ Distribution lists are supported - add multiple recipients, all enabled recipien
 - English: BBC, CNN, Reuters, TechCrunch, Ars Technica, Hacker News
 
 Feeds are inserted on first database initialization. Categories: general, business, tech, politics, science.
+
+## Project Structure
+
+```
+├── api/                 # FastAPI backend
+│   ├── routers/         # API endpoints (articles, feeds, digest, etc.)
+│   └── tests/           # Pytest test suite
+├── workflows/           # n8n workflow JSON exports
+├── scripts/             # Provisioning and utility scripts
+├── sql/                 # Database initialization (init.sql)
+├── docker-compose.yml   # Container orchestration
+└── openapi.yaml         # API specification
+```
 
 ## Running Tests
 
