@@ -39,6 +39,20 @@ Recipients are managed via API (`POST /api/recipients`), not environment variabl
 
 n8n 2.x requires manual owner account creation. Visit `http://localhost:5678` on first startup and create your account. This cannot be automated via environment variables.
 
+## Reimport Workflows While Running
+
+If you update workflow JSON files in `workflows/`, you can reimport and activate them without restarting containers:
+
+```bash
+# Import all workflows
+docker compose exec n8n n8n import:workflow --separate --input=/workflows/
+
+# Activate all workflows (so Execute Workflow nodes can reach sub-workflows)
+docker compose exec n8n sh -c "n8n list:workflow | awk -F'|' 'NR>1 && \$1 ~ /^[A-Za-z0-9_-]+\$/ {gsub(/[ \\t]/, \"\", \$1); print \$1}' | xargs -I{} n8n update:workflow --id={} --active=true"
+```
+
+`--separate` imports each workflow file individually from the mounted `/workflows/` directory inside the n8n container.
+
 ## Telegram Bot (Local Development)
 
 The Telegram Agent workflow requires Telegram servers to send webhook requests to your n8n instance. For local development, you must expose n8n via a public tunnel.
@@ -179,3 +193,11 @@ The `openapi.yaml` file follows the [OpenAPI 3.0 Specification](https://spec.ope
 Alternatively, use built-in API Key auth in collection settings.
 
 > **Note:** OpenAPI is widely adopted—if your preferred tool isn't listed, check its docs for "OpenAPI" or "Swagger" import. The terms are often used interchangeably (Swagger was renamed to OpenAPI in 2016).
+
+## Post-Handover Checklist
+
+Items to update when deploying to production/internal infrastructure:
+
+- [ ] **Email Logo CDN**: The Siemens logo in email digests is currently hosted on an external CDN (`povlib.b-cdn.net`). Update `api/routers/digest.py` to use an internal Siemens CDN URL.
+- [ ] **API Keys**: Generate new production API keys and secrets in `.env`
+- [ ] **SMTP**: Configure internal SMTP server credentials
