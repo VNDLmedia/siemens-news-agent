@@ -61,7 +61,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $json.telegram_chat_id }}",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
         "text": "={{ $fromAI('message', 'Die formatierte Nachricht die an den User gesendet werden soll. Bei News: übersichtlich mit Emojis. Bei X/LinkedIn Posts: den generierten Post unverändert.', 'string') }}",
         "additionalFields": {}
       },
