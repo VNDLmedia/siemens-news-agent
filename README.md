@@ -1,21 +1,28 @@
 # AI News Agent
 
-Automated news aggregation and distribution system built on n8n workflows. Ingests articles from RSS feeds, stores them in PostgreSQL, and publishes summaries to configured output channels (email, LinkedIn, X).
+Automated news aggregation and distribution system built on n8n workflows.
+
+Core Features:
+* agentic Telegram Bot for communication with the system
+* automatic scraping from RSS Feeds, Google News and X Accounts
+* periodic news digest via email
+* ghostwriter workflows for X and LinkedIn Posts
+* REST-API
 
 ## Prerequisites
 
 - Docker 20.10+
 - Docker Compose v2
 
-## Quick Start
+## Quick start after cloning
 
-1. Create .env file
+1. Create `.env` file
 
 ```bash
 cp env.example .env
 ```
 
-2. Edit .env with your credentials
+2. Insert your own credentials into `.env` (see "Environment Variables" down below)
 
 3. Start container
 
