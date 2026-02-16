@@ -51,7 +51,7 @@ class TestDigestPreviewContract:
         # Should contain digest title
         assert "News Digest" in html
         # Should contain footer
-        assert "News AI Agent" in html
+        assert "AI News Agent" in html
 
 
 class TestDigestDataContract:
