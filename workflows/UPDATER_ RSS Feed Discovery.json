@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## UPDATER: RSS Feed Discovery\n\n**Zweck:** Findet und validiert neue RSS Feeds zu einem Thema.\n\n### Input\n- `message`: Thema oder URL\n  - z.B. \"Automobilbranche\"\n  - z.B. \"https://spiegel.de\"\n\n### Ablauf\n1. GPT Agent interpretiert Anfrage\n2. Generiert mögliche Feed-URLs\n3. Validiert jeden Feed (via Validator)\n4. Gibt Liste valider Feeds zurück\n\n### Output\n```json\n[\n  {\n    \"name\": \"Feed Name\",\n    \"url\": \"https://...\",\n    \"itemCount\": 15,\n    \"status\": \"VALID\"\n  }\n]\n```\n\n### Verwendet\n- UPDATER: RSS Feed Validator\n- GPT-4 für URL-Generierung\n\n### Telegram Auslöser\n- \"finde feeds zu...\"\n- \"neue rss quellen\"\n- \"welche feeds gibt es\"",
+        "content": "## UPDATER: RSS Feed Discovery\n\n**Zweck:** Findet, validiert und speichert neue RSS Feeds.\n\n### Input\n- `message`: Thema oder URL\n  - z.B. \"Automobilbranche\"\n  - z.B. \"https://spiegel.de\"\n\n### Ablauf\n1. GPT Agent sucht relevante Feeds\n2. Validiert jeden Feed (via Validator)\n3. Parst Ergebnis als JSON\n4. **Fügt valide Feeds in DB ein** (rss_sources)\n5. Gibt Zusammenfassung zurück\n\n### Datenbank-Felder\n- name, url, language, category\n- ON CONFLICT: Update bei existierender URL\n\n### Verwendet\n- UPDATER: RSS Feed Validator\n- GPT-4 für URL-Generierung\n- PostgreSQL für Speicherung\n\n### Telegram Auslöser\n- \"finde feeds zu...\"\n- \"neue rss quellen\"\n- \"welche feeds gibt es\"",
         "height": 500,
         "width": 300
       },
@@ -81,25 +81,117 @@
     },
     {
       "parameters": {
+        "jsCode": "// Parse the agent's JSON output and prepare for database insertion\nconst output = $input.first().json.output || '';\n\ntry {\n  // Extract JSON array from output (handle markdown code blocks if present)\n  let jsonStr = output;\n  const jsonMatch = output.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (jsonMatch) {\n    jsonStr = jsonMatch[1].trim();\n  }\n  \n  const feeds = JSON.parse(jsonStr);\n  \n  // Filter only VALID feeds and format for database insertion\n  const validFeeds = feeds\n    .filter(feed => feed.status === 'VALID')\n    .map(feed => ({\n      name: feed.name || 'Unknown Feed',\n      url: feed.url,\n      language: feed.language || 'de',\n      category: feed.category || 'general',\n      article_count: feed.itemCount || 0\n    }));\n  \n  return {\n    json: {\n      feeds: validFeeds,\n      feed_count: validFeeds.length,\n      raw_output: output\n    }\n  };\n} catch (e) {\n  return {\n    json: {\n      feeds: [],\n      feed_count: 0,\n      error: e.message,\n      raw_output: output\n    }\n  };\n}"
+      },
+      "id": "95c9c148-6645-4b4a-9607-8e464817638e",
+      "name": "Parse Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4176,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-feeds",
+              "leftValue": "={{ $json.feed_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-feeds-exist",
+      "name": "Has Valid Feeds?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split feeds into individual items for database insertion\nconst feeds = $input.first().json.feeds || [];\n\nreturn feeds.map(feed => ({ json: feed }));"
+      },
+      "id": "split-feeds",
+      "name": "Split Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rss_sources (name, url, language, category, article_count)\nVALUES (\n  '{{ $json.name.replace(/'/g, \"''\") }}',\n  '{{ $json.url.replace(/'/g, \"''\") }}',\n  '{{ $json.language }}',\n  '{{ $json.category }}',\n  {{ $json.article_count }}\n)\nON CONFLICT (url) DO UPDATE SET\n  name = EXCLUDED.name,\n  article_count = EXCLUDED.article_count,\n  updated_at = NOW()\nRETURNING id, name, url, 'inserted_or_updated' as action",
+        "options": {}
+      },
+      "id": "insert-feed",
+      "name": "Insert Feed to DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        4848,
+        944
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all inserted feeds and return summary\nconst inserted = $input.all().map(item => item.json);\n\nreturn {\n  json: {\n    response: `${inserted.length} Feed(s) erfolgreich in Datenbank eingefügt/aktualisiert.`,\n    inserted_feeds: inserted,\n    count: inserted.length\n  }\n};"
+      },
+      "id": "return-success",
+      "name": "Return Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5072,
+        944
+      ]
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
             {
               "id": "response-field",
               "name": "response",
-              "value": "={{ $json.output }}",
+              "value": "={{ 'Keine validen RSS Feeds gefunden. ' + ($json.error ? 'Fehler: ' + $json.error : 'Die Suche ergab keine gültigen Feeds.') }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "95c9c148-6645-4b4a-9607-8e464817638e",
-      "name": "Return Results",
+      "id": "return-no-feeds",
+      "name": "Return No Feeds",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4176,
-        960
+        4624,
+        1152
       ]
     },
     {
@@ -137,7 +229,7 @@
         "promptType": "define",
         "text": "={{ $json.message }}",
         "options": {
-          "systemMessage": "=Du bist der News Agent Updater - ein intelligenter Assistent der RSS-Quellen verwaltet.\n\nDeine Aufgaben:\n1. SEARCH: Nutze Web Search um die 3-4 besten RSS-Feeds zum Thema zu finden. Eine Suche reicht. Bevorzuge bekannte, etablierte Quellen bei denen ein RSS-Feed wahrscheinlich ist.\n\n2. CHECK: Pruefe maximal 4 Feeds mit dem validate_rss_feed Tool. Gib die URL als 'url' Parameter. Wenn ein Feed UNREACHABLE ist, probiere EINEN alternativen Pfad (/feed oder /rss.xml). Nicht mehr.\n\n3. OUTPUT: Antworte AUSSCHLIESSLICH mit einem JSON Array der validierten Feeds. Kein Text davor, kein Text danach, kein Markdown, keine Codeblocks. Wenn der User nach einer konkreten URL gefragt hat, gib auch diese im Array zurueck (mit dem jeweiligen Status).\n\nJSON Format:\n[\n  {\n    \"name\": \"Feed Name\",\n    \"url\": \"https://example.com/feed\",\n    \"itemCount\": 42,\n    \"status\": \"VALID\"\n  }\n]\n\nWenn der User eine konkrete URL geprueft haben will:\n[\n  {\n    \"name\": \"Feed Name\",\n    \"url\": \"https://example.com/feed\",\n    \"itemCount\": 0,\n    \"status\": \"UNREACHABLE\"\n  }\n]\n\nRegeln:\n- Max 1 Web Search, max 4 Feed-Checks\n- Bei Themen-Suche: NUR Feeds mit Status VALID ins Array\n- Bei konkreter URL vom User: immer zurueckgeben, egal welcher Status\n- IMMER valides JSON Array, nichts anderes\n- Leeres Array [] wenn nichts gefunden"
+          "systemMessage": "=Du bist der News Agent Updater - ein intelligenter Assistent der RSS-Quellen verwaltet.\n\nDeine Aufgaben:\n1. SEARCH: Nutze Web Search um die 3-4 besten RSS-Feeds zum Thema zu finden. Eine Suche reicht. Bevorzuge bekannte, etablierte Quellen bei denen ein RSS-Feed wahrscheinlich ist.\n\n2. CHECK: Pruefe maximal 4 Feeds mit dem validate_rss_feed Tool. Gib die URL als 'url' Parameter. Wenn ein Feed UNREACHABLE ist, probiere EINEN alternativen Pfad (/feed oder /rss.xml). Nicht mehr.\n\n3. OUTPUT: Antworte AUSSCHLIESSLICH mit einem JSON Array der validierten Feeds. Kein Text davor, kein Text danach, kein Markdown, keine Codeblocks.\n\nJSON Format (fuer Datenbank-Import):\n[\n  {\n    \"name\": \"Feed Name\",\n    \"url\": \"https://example.com/feed\",\n    \"itemCount\": 42,\n    \"language\": \"de\",\n    \"category\": \"tech\",\n    \"status\": \"VALID\"\n  }\n]\n\nFelder:\n- name: Name der Quelle (z.B. 'Heise Online', 'TechCrunch')\n- url: Vollstaendige Feed-URL\n- itemCount: Anzahl Artikel im Feed (aus Validierung)\n- language: 'de' fuer deutsche, 'en' fuer englische Quellen\n- category: Eine von: 'general', 'business', 'tech', 'politics', 'science'\n- status: 'VALID', 'NOT_RSS' oder 'UNREACHABLE'\n\nRegeln:\n- Max 1 Web Search, max 4 Feed-Checks\n- Bei Themen-Suche: NUR Feeds mit Status VALID ins Array\n- Bei konkreter URL vom User: immer zurueckgeben, egal welcher Status\n- IMMER valides JSON Array, nichts anderes\n- Leeres Array [] wenn nichts gefunden\n- Bestimme language und category anhand des Themas/der Quelle"
         }
       },
       "id": "31d2ba83-9807-4f38-8c48-27bfb4cdb47a",
@@ -198,7 +290,58 @@
       "main": [
         [
           {
-            "node": "Return Results",
+            "node": "Parse Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Feeds": {
+      "main": [
+        [
+          {
+            "node": "Has Valid Feeds?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Valid Feeds?": {
+      "main": [
+        [
+          {
+            "node": "Split Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return No Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Feeds": {
+      "main": [
+        [
+          {
+            "node": "Insert Feed to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Feed to DB": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
             "type": "main",
             "index": 0
           }

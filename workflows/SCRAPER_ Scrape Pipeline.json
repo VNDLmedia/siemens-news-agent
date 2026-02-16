@@ -188,18 +188,29 @@
     },
     {
       "parameters": {
+        "jsCode": "// Build a fully escaped SQL statement per item to avoid pg parameter protocol issues\nfunction sanitizeText(value) {\n  return String(value ?? '')\n    // PostgreSQL rejects NUL bytes in text values and query payloads\n    .replace(/\\u0000/g, '')\n    // Remove other control chars except tab/newline/carriage return\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, ' ')\n    .trim();\n}\n\nfunction sqlString(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const escaped = sanitizeText(value)\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/'/g, \"''\");\n  return `'${escaped}'`;\n}\n\nfunction sqlNumber(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const num = Number(value);\n  return Number.isFinite(num) ? String(num) : 'NULL';\n}\n\nfunction sqlTimestamp(value) {\n  if (!value) return 'NULL';\n  return `${sqlString(value)}::timestamp`;\n}\n\nfunction sqlTextArray(arr) {\n  if (!Array.isArray(arr) || arr.length === 0) return \"'{}'::text[]\";\n  const escaped = arr.map(v => {\n    const val = sanitizeText(v)\n      .replace(/\\\\/g, '\\\\\\\\')\n      .replace(/\"/g, '\\\\\"');\n    return `\"${val}\"`;\n  });\n  return `${sqlString(`{${escaped.join(',')}}`)}::text[]`;\n}\n\nreturn $input.all().map(item => {\n  const d = item.json;\n\n  const insertSql = `INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES (${sqlString(d.url)}, ${sqlString(d.title)}, ${sqlString(d.content)}, ${sqlString(d.source)}, ${sqlString(d.source_type)}, ${sqlTimestamp(d.published_at)}, ${sqlString(d.summary)}, ${sqlString(d.sentiment)}, ${sqlNumber(d.sentiment_score)}, ${sqlString(d.priority)}, ${sqlString(d.priority_reason)}, ${sqlTextArray(d.topics)}, ${sqlTextArray(d.keywords)}, ${sqlTextArray(d.companies)}, ${sqlTextArray(d.persons)}, ${sqlTextArray(d.regions)}, ${sqlString(d.language)}, ${sqlString(d.category)}, ${sqlTextArray(d.relevance_match)}, TRUE, FALSE) ON CONFLICT (url) DO NOTHING`;\n\n  return {\n    json: {\n      ...d,\n      insert_sql: insertSql,\n    },\n  };\n});"
+      },
+      "id": "a1b2c3d4-prep-db-node-id",
+      "name": "Prepare for DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2040,
+        928
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, TRUE, FALSE) ON CONFLICT (url) DO NOTHING",
-        "options": {
-          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ '{' + ($json.topics || []).join(',') + '}' }},={{ '{' + ($json.keywords || []).join(',') + '}' }},={{ '{' + ($json.companies || []).join(',') + '}' }},={{ '{' + ($json.persons || []).join(',') + '}' }},={{ '{' + ($json.regions || []).join(',') + '}' }},={{ $json.language }},={{ $json.category }},={{ '{' + ($json.relevance_match || []).join(',') + '}' }}"
-        }
+        "query": "={{ $json.insert_sql }}",
+        "options": {}
       },
       "id": "0267ecb5-763b-43a7-8ec2-8a63e3c2ce81",
       "name": "DB Insert",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        2160,
+        2280,
         928
       ],
       "credentials": {
@@ -219,7 +230,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2400,
+        2520,
         928
       ]
     },
@@ -316,6 +327,17 @@
       ]
     },
     "Normalize + Analyze": {
+      "main": [
+        [
+          {
+            "node": "Prepare for DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for DB": {
       "main": [
         [
           {

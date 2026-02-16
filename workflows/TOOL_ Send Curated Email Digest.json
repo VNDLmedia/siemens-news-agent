@@ -107,9 +107,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "news-curator-workflow",
+          "value": "7JZBLepEeQDOlUUJ",
           "mode": "list",
-          "cachedResultUrl": "/workflow/news-curator-workflow",
+          "cachedResultUrl": "/workflow/7JZBLepEeQDOlUUJ",
           "cachedResultName": "CURATOR: News Curator"
         },
         "workflowInputs": {
@@ -194,7 +194,7 @@
           "conditions": [
             {
               "id": "has-articles",
-              "leftValue": "={{ $json.curated_count }}",
+              "leftValue": "={{ $json.article_count ?? (($json.articles || []).length) ?? 0 }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -217,16 +217,37 @@
     },
     {
       "parameters": {
-        "jsCode": "// Generate Siemens-styled HTML email from curated articles\nconst curatorResult = $input.first().json;\nconst recipientData = $('Collect Recipients').first().json;\nconst articles = curatorResult.curated_articles || [];\n\nconst date = new Date().toLocaleDateString('de-DE', { \n  weekday: 'long', \n  year: 'numeric', \n  month: 'long', \n  day: 'numeric' \n});\n\nconst articleIds = articles.map(a => a.id);\n\n// Siemens logo SVG as base64 data URI\nconst logoBase64 = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDE2LjAuNCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjxzdmcgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjEwMDBweCINCgkgaGVpZ2h0PSIxNTlweCIgdmlld0JveD0iMCAwIDEwMDAgMTU5IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAxMDAwIDE1OTsiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPGcgaWQ9IkJvdW5kaW5nQm94Ij4NCgk8cG9seWdvbiBzdHlsZT0iZmlsbDpub25lOyIgcG9pbnRzPSIwLDE1OSAxMDAwLDE1OSAxMDAwLDAgMCwwIDAsMCAJIi8+DQo8L2c+DQo8ZyBpZD0iU0lFTUVOUyI+DQoJPGc+DQoJCTxwYXRoIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBkPSJNMy4wODYsMTUyLjUzN1YxMjIuNDYNCgkJCWMxNy4xMTksNS4zODgsMzIuMjY3LDguMDgyLDQ1LjQ0NCw4LjA4MmMxOC4xOTMsMCwyNy4yOTEtNC44MDksMjcuMjkxLTE0LjQyYzAtMy41ODMtMS4zMjQtNi41OTQtMy45NzgtOS4wMzINCgkJCWMtMi43MTQtMi41ODYtOS42NjUtNi4xNzEtMjAuODM1LTEwLjc2NGMtMjAuMDQyLTguMjQxLTMzLjExMS0xNS4yNjktMzkuMTktMjEuMDgyQzMuOTM5LDY3LjU3MSwwLDU3Ljg5NSwwLDQ2LjIwMg0KCQkJQzAsMzEuMTQ0LDUuNzQsMTkuNjY3LDE3LjIxMiwxMS43OEMyOC41NTcsMy45NjIsNDMuMzMsMC4wNTcsNjEuNTU0LDAuMDU3YzEwLjA0MSwwLDI0LjU3NCwxLjg0OCw0My41ODMsNS41NDl2MjguOTMzDQoJCQljLTE0LjE0NC01LjY1LTI3LjI3My04LjQ2OS0zOS40MDMtOC40NjljLTE3LjA4MSwwLTI1LjYyMSw0LjY5LTI1LjYyMSwxNC4wOTFjMCwzLjUxNCwxLjcyLDYuMzgsNS4xNjUsOC42MDINCgkJCWMyLjg2NSwxLjc5OCwxMC43NTksNS41OTYsMjMuNjY1LDExLjQwNmMxOC41ODMsOC4yNTMsMzAuOTU0LDE1LjQyNywzNy4xMTgsMjEuNTI5YzcuMzE0LDcuMjM4LDEwLjk3OCwxNi42MDQsMTAuOTc4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTc3LDI5LjA4OC0yMS41MjEsMzcuNzYxYy0xMS42MjEsNy4wMzMtMjYuNjksMTAuNTM1LTQ1LjE5OCwxMC41MzVDMzQuNjksMTU4LjA3OCwxOC45NDIsMTU2LjIzNywzLjA4NiwxNTIuNTM3DQoJCQlMMy4wODYsMTUyLjUzN3oiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMTQxLjA2MywyLjcwNCAxNDEuMDYzLDIuNzA0IDE4My42MDMsMi43MDQgDQoJCQkxODMuNjAzLDE1NS4wMDEgMTQxLjA2MywxNTUuMDAxIAkJIi8+DQoJCTxwb2x5Z29uIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBwb2ludHM9IjIyMi42MTYsMTU1LjAwMSAyMjIuNjE2LDIuNzA0IDMzMS43MjEsMi43MDQgDQoJCQkzMzEuNzIxLDMwLjI1IDI2My42MTYsMzAuMjUgMjYzLjYxNiw2NC42MzkgMzIyLjg5OCw2NC42MzkgMzIyLjg5OCw4OS43NjUgMjYzLjYxNiw4OS43NjUgMjYzLjYxNiwxMjUuOTA2IDMzMy40NzYsMTI1LjkwNiANCgkJCTMzMy40NzYsMTU1LjAwMSAyMjIuNjE2LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMzYxLjI0NywxNTUuMDAxIDM2MS4yNDcsMi43MDQgNDE2LjQwMiwyLjcwNCANCgkJCTQ1NC43MjEsMTAwLjAxNSA0OTQuMDAxLDIuNzA0IDU0Ni4zOSwyLjcwNCA1NDYuMzksMTU1LjAwMSA1MDYuMDU2LDE1NS4wMDEgNTA2LjA1Niw0Ny4xNzEgNDYxLjM5MiwxNTYuNTQ3IDQzNS4wMjMsMTU2LjU0NyANCgkJCTM5MS4yMTksNDcuMTcxIDM5MS4yMTksMTU1LjAwMSAzNjEuMjQ3LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNTg1LjQxMSwxNTUuMDAxIDU4NS40MTEsMi43MDQgNjk0LjUxNCwyLjcwNCANCgkJCTY5NC41MTQsMzAuMjUgNjI2LjQxNSwzMC4yNSA2MjYuNDE1LDY0LjYzOSA2ODUuNjk1LDY0LjYzOSA2ODUuNjk1LDg5Ljc2NSA2MjYuNDE1LDg5Ljc2NSA2MjYuNDE1LDEyNS45MDYgNjk2LjI4LDEyNS45MDYgDQoJCQk2OTYuMjgsMTU1LjAwMSA1ODUuNDExLDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNzI0LjI3MSwxNTUuMDAxIDcyNC4yNzEsMi43MDQgNzczLjU3NSwyLjcwNCANCgkJCTgyNS44ODMsMTA0LjY1NSA4MjUuODgzLDIuNzA0IDg1NS44NDcsMi43MDQgODU1Ljg0NywxNTUuMDAxIDgwNy45NDMsMTU1LjAwMSA3NTQuMjQ3LDUxLjY3OCA3NTQuMjQ3LDE1NS4wMDEgNzI0LjI3MSwxNTUuMDAxIAkJDQoJCQkiLz4NCgkJPHBhdGggc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIGQ9Ik04ODYuMDQ3LDE1Mi41MzdWMTIyLjQ2DQoJCQljMTYuOTc0LDUuMzg4LDMyLjEyLDguMDgyLDQ1LjQ1Miw4LjA4MmMxOC4xOTUsMCwyNy4yODItNC44MDksMjcuMjgyLTE0LjQyYzAtMy41ODMtMS4yODktNi41OTQtMy44NTQtOS4wMzINCgkJCWMtMi43MjgtMi41ODYtOS43MDgtNi4xNzEtMjAuOTQ1LTEwLjc2NGMtMTkuOTgyLTguMTczLTMzLjA2NC0xNS4xOTgtMzkuMTk5LTIxLjA4MmMtNy44NzUtNy42MDUtMTEuODA3LTE3LjMxNy0xMS44MDctMjkuMTQ2DQoJCQljMC0xNC45OTMsNS43MjYtMjYuNDMyLDE3LjIxLTM0LjMxOWMxMS4zMjgtNy44MTgsMjYuMTE4LTExLjcyMyw0NC4zNDQtMTEuNzIzYzEwLjI0NywwLDIzLjUyNSwxLjYyNywzOS44MSw0Ljg5NmwzLjc2MSwwLjY1Mw0KCQkJdjI4LjkzM2MtMTQuMTQ2LTUuNjUtMjcuMzEzLTguNDY5LTM5LjUwOC04LjQ2OWMtMTcuMDE2LDAtMjUuNTAzLDQuNjktMjUuNTAzLDE0LjA5MWMwLDMuNTE0LDEuNzExLDYuMzgsNS4xNDcsOC42MDINCgkJCWMyLjczLDEuNzI5LDEwLjY1Niw1LjUyOSwyMy43NzgsMTEuNDA2YzE4LjQ0Miw4LjI1MywzMC43ODcsMTUuNDI3LDM3LjAwNSwyMS41MjljNy4zMjUsNy4yMzgsMTAuOTgsMTYuNjA0LDEwLjk4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTM1LDI5LjA4OC0yMS40MDYsMzcuNzYxYy0xMS42ODksNy4wMzMtMjYuNzk2LDEwLjUzNS00NS4zMDEsMTAuNTM1DQoJCQlDOTE3LjY0NiwxNTguMDc4LDkwMS44OTEsMTU2LjIzNyw4ODYuMDQ3LDE1Mi41MzdMODg2LjA0NywxNTIuNTM3eiIvPg0KCTwvZz4NCjwvZz4NCjwvc3ZnPg0K';\n\n// Priority badge colors\nconst getPriorityBadge = (priority) => {\n  switch(priority) {\n    case 'high': return '<span style=\"background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-left: 10px;\">HIGH</span>';\n    case 'medium': return '<span style=\"background: #f39c12; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-left: 10px;\">MEDIUM</span>';\n    default: return '';\n  }\n};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #66667e; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f3f3f0; }\n    .header { margin-bottom: 30px; padding-top: 30px; padding-bottom: 30px; border-bottom: 2px solid #009999; }\n    .logo { max-width: 200px; height: auto; margin-top: 20px; margin-bottom: 25px; }\n    h1 { color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em; }\n    .subtitle { color: #9999a9; font-size: 0.9em; margin-top: 5px; }\n    .article { margin-bottom: 30px; padding: 20px; background: #ebebee; border-left: 4px solid #009999; }\n    .article.high-priority { border-left-color: #e74c3c; }\n    .article.medium-priority { border-left-color: #f39c12; }\n    .article h2 { margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em; }\n    .article-meta { color: #9999a9; font-size: 0.85em; margin-bottom: 10px; }\n    .summary { margin: 15px 0; color: #66667e; }\n    .keywords { margin-top: 10px; }\n    .keyword { display: inline-block; background: #ccccd4; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px; }\n    .read-more { display: inline-block; margin-top: 10px; color: #009999; text-decoration: none; font-weight: 600; }\n    .read-more:hover { color: #00c1b6; }\n    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center; }\n    .stats { background: #000028; color: white; padding: 15px 20px; border-radius: 5px; margin-bottom: 25px; }\n    .stats-item { display: inline-block; margin-right: 20px; }\n    .stats-number { font-size: 1.5em; font-weight: 700; color: #009999; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <img src=\"${logoBase64}\" alt=\"Siemens\" class=\"logo\">\n    <h1>Dein News Digest - ${date}</h1>\n    <div class=\"subtitle\">KI-kuratierte Auswahl der wichtigsten Nachrichten</div>\n  </div>\n  \n  <div class=\"stats\">\n    <span class=\"stats-item\"><span class=\"stats-number\">${articles.length}</span> Artikel ausgewählt</span>\n    <span class=\"stats-item\">aus <span class=\"stats-number\">${curatorResult.total_candidates || 0}</span> Kandidaten</span>\n  </div>\n  \n  <p>Hier sind deine ${articles.length} wichtigsten Nachrichten von heute, intelligent kuratiert für maximale Relevanz und Vielfalt:</p>\n`;\n\nfor (const article of articles) {\n  const publishedDate = article.published_at ? \n    new Date(article.published_at).toLocaleDateString('de-DE') : \n    'Datum unbekannt';\n  \n  const priorityClass = article.priority === 'high' ? 'high-priority' : \n                        article.priority === 'medium' ? 'medium-priority' : '';\n  \n  // Build keywords/topics display\n  let keywordsHtml = '';\n  const allTags = [...(article.topics || []), ...(article.keywords || [])].slice(0, 5);\n  if (allTags.length > 0) {\n    keywordsHtml = '<div class=\"keywords\">' + \n      allTags.map(tag => `<span class=\"keyword\">${tag}</span>`).join('') + \n      '</div>';\n  }\n  \n  html += `\n  <div class=\"article ${priorityClass}\">\n    <h2>${article.title}${getPriorityBadge(article.priority)}</h2>\n    <div class=\"article-meta\">\n      ${publishedDate} | ${article.source}${article.category ? ` | ${article.category}` : ''}\n    </div>\n    <div class=\"summary\">\n      ${article.summary || 'Keine Zusammenfassung verfügbar'}\n    </div>\n    ${keywordsHtml}\n    <a href=\"${article.url}\" class=\"read-more\" target=\"_blank\">Weiterlesen →</a>\n  </div>\n  `;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Dieser Digest wurde automatisch von deinem News AI Agent generiert.</p>\n    <p style=\"font-size: 0.8em;\">Powered by KI-gestützte Kuration | ${curatorResult.usecase || 'daily_newsletter'}</p>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    html_content: html,\n    article_count: articles.length,\n    article_ids: articleIds,\n    recipient_emails: recipientData.recipient_emails,\n    recipient_count: recipientData.recipient_count,\n    subject: `News Digest - ${date} (${articles.length} kuratierte Artikel)`\n  }\n};"
+        "method": "POST",
+        "url": "http://api:3000/api/digest/render",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"articles\": ($json.articles || $json.curated_articles || []), \"total_candidates\": ($json.total_candidates || ($json.articles || []).length || ($json.curated_articles || []).length || 0), \"usecase\": ($json.usecase || \"daily_newsletter\"), \"recipient_emails\": ($(\"Collect Recipients\").first().json.recipient_emails || []) } }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "generate-siemens-email",
       "name": "Generate Siemens Email",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1632,
         368
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "news-agent-api-key",
+          "name": "News Agent API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -268,10 +289,8 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE articles SET sent = TRUE WHERE id = ANY($1::uuid[])",
-        "options": {
-          "queryReplacement": "={{ '{' + $('Generate Siemens Email').first().json.article_ids.join(',') + '}' }}"
-        }
+        "query": "={{ (() => { const ids = $('Generate Siemens Email').first().json.article_ids || []; if (!ids.length) return 'SELECT 0 AS updated_count'; const uuidItems = ids.map(id => `'${String(id).replace(/'/g, \"''\")}'::uuid`).join(','); return `UPDATE articles SET sent = TRUE WHERE id = ANY(ARRAY[${uuidItems}])`; })() }}",
+        "options": {}
       },
       "id": "mark-sent",
       "name": "Mark Articles Sent",
