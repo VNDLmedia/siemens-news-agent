@@ -101,6 +101,24 @@ else
     echo "  - Telegram credential (TELEGRAM_ACCESS_TOKEN not set)"
 fi
 
+# Internal API key credential for HTTP Request header auth
+if [ -n "$API_KEY" ]; then
+    cat > /tmp/creds/api-key-header.json << EOF
+{
+  "id": "news-agent-api-key",
+  "name": "News Agent API Key",
+  "type": "httpHeaderAuth",
+  "data": {
+    "name": "X-API-Key",
+    "value": "${API_KEY}"
+  }
+}
+EOF
+    echo "  + API Header Auth credential"
+else
+    echo "  - API Header Auth credential (API_KEY not set)"
+fi
+
 # =====================================================
 # Step 2: Import credentials (must happen before workflows)
 # =====================================================
@@ -153,7 +171,8 @@ const credMap = {
     'openAiApi': 'news-agent-openai',
     'postgres': 'news-agent-postgres',
     'smtp': 'news-agent-smtp',
-    'telegramApi': 'news-agent-telegram'
+    'telegramApi': 'news-agent-telegram',
+    'httpHeaderAuth': 'news-agent-api-key'
 };
 
 // Recursively find and update credential references
@@ -204,17 +223,55 @@ rm -rf /tmp/workflows
 echo ""
 echo "[5/5] Activating workflows..."
 sleep 2
-workflow_list=$(n8n list:workflow 2>/dev/null || echo "")
-if [ -n "$workflow_list" ]; then
-    echo "$workflow_list" | while read -r line; do
-        wfid=$(echo "$line" | cut -d'|' -f1 | tr -d ' ')
-        if [ -n "$wfid" ] && [ "$wfid" != "ID" ]; then
-            echo "  Activating: $wfid"
-            n8n update:workflow --id="$wfid" --active=true 2>/dev/null || true
-        fi
-    done
+
+workflow_list="$(n8n list:workflow 2>/tmp/n8n-list.err || true)"
+
+if [ -z "$workflow_list" ]; then
+    echo "  No workflows returned by n8n list:workflow"
+    if [ -s /tmp/n8n-list.err ]; then
+        echo "  n8n list:workflow stderr:"
+        cat /tmp/n8n-list.err
+    fi
+    rm -f /tmp/n8n-list.err
 else
-    echo "  No workflows to activate (or list command failed)"
+    rm -f /tmp/n8n-list.err
+
+    workflow_ids="$(printf '%s\n' "$workflow_list" | awk -F'|' '
+    function trim(s) {
+        gsub(/^[ \t]+|[ \t]+$/, "", s);
+        return s;
+    }
+    {
+        id = trim($1);
+        lower = tolower(id);
+        if (id == "" || lower == "id" || lower == "workflow id" || id ~ /^-+$/) next;
+        if (id ~ /^[A-Za-z0-9_-]+$/) print id;
+    }
+    ' | sort -u)"
+
+    if [ -z "$workflow_ids" ]; then
+        echo "  No valid workflow IDs found to publish"
+    else
+        total=0
+        published=0
+        failed=0
+
+        for wfid in $workflow_ids; do
+            total=$((total + 1))
+            echo "  Publishing: $wfid"
+            if n8n update:workflow --id="$wfid" --active=true >/dev/null 2>&1; then
+                published=$((published + 1))
+            else
+                failed=$((failed + 1))
+                echo "    WARNING: Failed to publish workflow $wfid"
+            fi
+        done
+
+        echo "  Publish result: $published/$total successful"
+        if [ "$failed" -gt 0 ]; then
+            echo "  WARNING: Some workflows could not be activated"
+        fi
+    fi
 fi
 
 # Mark as provisioned

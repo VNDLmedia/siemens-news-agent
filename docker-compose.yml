@@ -48,6 +48,7 @@ services:
       
       # OpenAI API Key (for workflows)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      API_KEY: ${API_KEY:-dev-api-key-change-in-production}
       
       # Email SMTP Settings (for credential provisioning)
       # NOTE: Recipients are managed via API (POST /api/recipients), not env vars
@@ -71,7 +72,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/workflows:ro
-      - ./scripts/provision-n8n.sh:/provision-n8n.sh:ro
+      - ./scripts:/scripts:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +83,7 @@ services:
       retries: 10
       start_period: 180s  # Allow time for first-run provisioning (workflow imports, etc.)
     entrypoint: []
-    command: ["sh", "/provision-n8n.sh"]
+    command: ["sh", "/scripts/provision-n8n.sh"]
 
   api:
     build: ./api
@@ -93,6 +94,8 @@ services:
       N8N_WEBHOOK_BASE_URL: http://n8n:5678/webhook
       API_KEY: ${API_KEY:-dev-api-key-change-in-production}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-32-chars-minimum}
+    volumes:
+      - ./docs/branding:/app/docs/branding:ro
     ports:
       - "3000:3000"
     depends_on:
