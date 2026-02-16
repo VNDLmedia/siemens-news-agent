@@ -90,6 +90,50 @@ class DiscoverFeedsRequest(BaseModel):
     message: str = Field(..., min_length=1, description="Topic or URL to search for RSS feeds, e.g. 'Automobilbranche' or 'https://spiegel.de'")
 
 
+# X Account Models
+class XAccountCreate(BaseModel):
+    """Create a new X/Twitter account to follow."""
+    username: str = Field(..., min_length=1, max_length=50, pattern=r'^[A-Za-z0-9_]+$')
+    display_name: Optional[str] = Field(None, max_length=200)
+    language: FeedLanguage = FeedLanguage.EN
+    category: Optional[FeedCategory] = None
+    enabled: bool = True
+
+
+class XAccountUpdate(BaseModel):
+    """Update an existing X account."""
+    username: Optional[str] = Field(None, min_length=1, max_length=50, pattern=r'^[A-Za-z0-9_]+$')
+    display_name: Optional[str] = Field(None, max_length=200)
+    language: Optional[FeedLanguage] = None
+    category: Optional[FeedCategory] = None
+    enabled: Optional[bool] = None
+
+
+class XAccount(BaseModel):
+    """X/Twitter account response model."""
+    id: str
+    username: str
+    display_name: Optional[str]
+    user_id: Optional[str]
+    language: FeedLanguage
+    category: Optional[FeedCategory]
+    enabled: bool
+    post_count: int
+    last_fetched: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+    
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
+    
+    class Config:
+        from_attributes = True
+
+
 # Recipient Models
 class ArticleUpdate(BaseModel):
     """Update an existing article."""

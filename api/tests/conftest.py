@@ -205,6 +205,64 @@ async def db_cleanup():
 
 
 @pytest.fixture
+def sample_x_account():
+    """Sample X account data for creating test accounts. Uses unique username per test."""
+    return {
+        "username": f"testuser{uuid.uuid4().hex[:8]}",
+        "display_name": "Test X Account",
+        "language": "en",
+        "category": "tech",
+        "enabled": True
+    }
+
+
+@pytest.fixture
+async def created_x_account(client, valid_headers, sample_x_account):
+    """
+    Create an X account for testing and clean it up afterwards.
+    
+    Use this fixture when you need an existing X account in the database.
+    """
+    response = await client.post("/api/x-accounts", json=sample_x_account, headers=valid_headers)
+    account = response.json()
+    account_id = account["id"]
+    
+    yield account
+    
+    # Cleanup: delete the account after test
+    await client.delete(f"/api/x-accounts/{account_id}", headers=valid_headers)
+
+
+@pytest.fixture(scope="module")
+async def x_accounts_cleanup():
+    """
+    Clean up test X account data before each test module.
+    
+    This runs once per test file, cleaning any leftover test data.
+    Only cleans data with test-specific patterns (usernames starting with 'testuser').
+    """
+    # Get database pool
+    pool = await get_pool()
+    
+    # Clean up test X accounts
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            DELETE FROM x_accounts 
+            WHERE username LIKE 'testuser%'
+        """)
+    
+    yield
+    
+    # Post-module cleanup
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            DELETE FROM x_accounts 
+            WHERE username LIKE 'testuser%'
+        """)
+
+
+@pytest.fixture
 async def clean_slate(client, valid_headers):
     """
     Ensure a clean database state for a specific test.

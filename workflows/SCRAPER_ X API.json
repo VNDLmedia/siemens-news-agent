@@ -1,0 +1,484 @@
+{
+  "name": "SCRAPER: X API",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SCRAPER: X API\n\n**Zweck:** Holt Posts von X/Twitter Accounts via API.\n\n### Ablauf\n1. Enabled Accounts aus `x_accounts` Tabelle laden\n2. Pro Account: X API aufrufen (letzte Posts)\n3. Posts extrahieren und formatieren\n4. Account-Stats aktualisieren\n\n### Trigger\n- Schedule: Alle 30 Min\n- Webhook: POST /scrape-x-api\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"x\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`x_accounts` - X Accounts verwalten\n\n### X API Credentials\nBenötigt X API Bearer Token\n(Header Auth Credential in n8n)",
+        "height": 520,
+        "width": 320
+      },
+      "id": "info-note-x",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -1184
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-x",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-x-api",
+        "options": {}
+      },
+      "id": "webhook-trigger-x",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -272
+      ],
+      "webhookId": "scrape-x-api-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, username, display_name, user_id, language, category FROM x_accounts WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 10",
+        "options": {}
+      },
+      "id": "fetch-accounts",
+      "name": "Fetch Enabled Accounts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1312,
+        -272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-accounts",
+              "leftValue": "={{ $json.username }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-accounts",
+      "name": "Has Accounts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.twitter.com/2/users/by/username/{{ $json.username }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "get-user-id",
+      "name": "Get User ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "x-api-bearer",
+          "name": "X API Bearer Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract user ID from response or use stored one\nconst input = $input.first().json;\nconst accountData = $('Fetch Enabled Accounts').all();\nconst pairedIndex = $input.first().pairedItem?.item ?? 0;\nconst account = accountData[pairedIndex]?.json || {};\n\n// Check if we got a valid user ID from API\nlet userId = input.data?.id;\nlet username = account.username;\n\n// If API failed, try to use stored user_id\nif (!userId && account.user_id) {\n  userId = account.user_id;\n}\n\nif (!userId) {\n  // No user ID available - skip this account\n  return [];\n}\n\nreturn [{\n  json: {\n    user_id: userId,\n    username: username,\n    display_name: input.data?.name || account.display_name || username,\n    account_id: account.id,\n    language: account.language || 'en',\n    category: account.category || 'general'\n  }\n}];"
+      },
+      "id": "extract-user-id",
+      "name": "Extract User ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.twitter.com/2/users/{{ $json.user_id }}/tweets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "max_results",
+              "value": "10"
+            },
+            {
+              "name": "tweet.fields",
+              "value": "created_at,text,public_metrics,entities"
+            },
+            {
+              "name": "exclude",
+              "value": "retweets,replies"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "fetch-tweets",
+      "name": "Fetch User Tweets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2208,
+        -288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "x-api-bearer",
+          "name": "X API Bearer Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract tweets from API response\nconst input = $input.first().json;\nconst userData = $('Extract User ID').all();\nconst pairedIndex = $input.first().pairedItem?.item ?? 0;\nconst user = userData[pairedIndex]?.json || {};\n\nconst tweets = input.data || [];\n\nif (!tweets.length) {\n  return [];\n}\n\nreturn tweets.map(tweet => {\n  // Build tweet URL\n  const tweetUrl = `https://x.com/${user.username}/status/${tweet.id}`;\n  \n  // Extract first URL from tweet if available\n  let linkedUrl = null;\n  if (tweet.entities?.urls?.length > 0) {\n    linkedUrl = tweet.entities.urls[0].expanded_url;\n  }\n  \n  // Create title from first ~100 chars of tweet\n  let title = tweet.text.substring(0, 100);\n  if (tweet.text.length > 100) title += '...';\n  \n  return {\n    json: {\n      tweet_id: tweet.id,\n      tweet_url: tweetUrl,\n      linked_url: linkedUrl,\n      text: tweet.text,\n      title: title,\n      created_at: tweet.created_at,\n      metrics: tweet.public_metrics || {},\n      user_id: user.user_id,\n      username: user.username,\n      display_name: user.display_name,\n      account_id: user.account_id,\n      language: user.language,\n      category: user.category\n    }\n  };\n});"
+      },
+      "id": "extract-tweets",
+      "name": "Extract Tweets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format tweet as article for DB Insert\nconst items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n\n  let pubDate = null;\n  if (data.created_at) {\n    try {\n      pubDate = new Date(data.created_at).toISOString();\n    } catch(e) {\n      pubDate = null;\n    }\n  }\n\n  // Use linked URL if available, otherwise tweet URL\n  const articleUrl = data.linked_url || data.tweet_url;\n\n  return {\n    json: {\n      url: articleUrl,\n      title: data.title || 'X Post',\n      content: data.text || '',\n      source: `@${data.username}` + (data.display_name ? ` (${data.display_name})` : ''),\n      source_type: 'x',\n      published_at: pubDate,\n      language: data.language || 'en',\n      category: data.category || 'general',\n      account_id: data.account_id,\n      tweet_id: data.tweet_id\n    }\n  };\n});"
+      },
+      "id": "format-article",
+      "name": "Format Article",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2656,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-valid",
+      "name": "Filter Valid Articles",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE x_accounts SET post_count = post_count + 1, last_fetched = NOW() WHERE id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.account_id }}"
+        }
+      },
+      "id": "update-account-stats",
+      "name": "Update Account Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        3104,
+        -304
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all articles and return them for the Pipeline\nconst allFormatted = $('Format Article').all();\nconst articles = allFormatted\n  .filter(item => item.json.url)\n  .map(item => ({\n    json: {\n      url: item.json.url,\n      title: item.json.title,\n      content: item.json.content,\n      source: item.json.source,\n      source_type: item.json.source_type,\n      published_at: item.json.published_at,\n      language: item.json.language,\n      category: item.json.category\n    }\n  }));\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No posts from X API' } }];\n}\n\nreturn articles;"
+      },
+      "id": "return-articles",
+      "name": "Return Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -80
+      ],
+      "id": "workflow-trigger-x",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// No accounts configured\nreturn [{ json: { _empty: true, message: 'No X accounts enabled in database' } }];"
+      },
+      "id": "no-accounts",
+      "name": "No Accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -96
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Enabled Accounts": {
+      "main": [
+        [
+          {
+            "node": "Has Accounts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Accounts?": {
+      "main": [
+        [
+          {
+            "node": "Get User ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User ID": {
+      "main": [
+        [
+          {
+            "node": "Extract User ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User ID": {
+      "main": [
+        [
+          {
+            "node": "Fetch User Tweets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch User Tweets": {
+      "main": [
+        [
+          {
+            "node": "Extract Tweets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tweets": {
+      "main": [
+        [
+          {
+            "node": "Format Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Article": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Articles": {
+      "main": [
+        [
+          {
+            "node": "Update Account Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Account Stats": {
+      "main": [
+        [
+          {
+            "node": "Return Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "x-api-scraper-v1",
+  "meta": {
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
+  },
+  "id": "XApiScraperWorkflow",
+  "tags": [
+    {
+      "updatedAt": "2026-02-16T12:00:00.000Z",
+      "createdAt": "2026-02-16T12:00:00.000Z",
+      "id": "scraper-tag",
+      "name": "scraper"
+    }
+  ]
+}

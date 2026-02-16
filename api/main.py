@@ -8,7 +8,7 @@ import yaml
 
 from config import settings
 from database import get_pool, close_pool
-from routers import feeds, articles, workflows, system, recipients, digest, search_queries
+from routers import feeds, articles, workflows, system, recipients, digest, search_queries, x_accounts
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +75,7 @@ app.include_router(digest.router)
 app.include_router(workflows.router)
 app.include_router(system.router)
 app.include_router(search_queries.router)
+app.include_router(x_accounts.router)
 
 
 @app.get("/", tags=["System"])

@@ -1579,6 +1579,278 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/x-accounts:
+    post:
+      tags:
+      - X Account Management
+      summary: Create X Account Endpoint
+      description: Create a new X/Twitter account to follow.
+      operationId: create_x_account_endpoint_api_x_accounts_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/XAccountCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '400':
+          description: Account with this username already exists
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - X Account Management
+      summary: List X Accounts
+      description: List all X/Twitter accounts.
+      operationId: list_x_accounts_api_x_accounts_get
+      parameters:
+      - name: enabled_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Enabled Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/XAccount'
+                title: Response List X Accounts Api X Accounts Get
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/x-accounts/{account_id}:
+    get:
+      tags:
+      - X Account Management
+      summary: Get X Account
+      description: Get a specific X account by ID.
+      operationId: get_x_account_api_x_accounts__account_id__get
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - X Account Management
+      summary: Update X Account Endpoint
+      description: Update an X account.
+      operationId: update_x_account_endpoint_api_x_accounts__account_id__put
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/XAccountUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - X Account Management
+      summary: Delete X Account Endpoint
+      description: Delete an X account.
+      operationId: delete_x_account_endpoint_api_x_accounts__account_id__delete
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: Response Delete X Account Endpoint Api X Accounts  Account
+                  Id  Delete
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/x-accounts/{account_id}/toggle:
+    patch:
+      tags:
+      - X Account Management
+      summary: Toggle X Account
+      description: Toggle the enabled status of an X account.
+      operationId: toggle_x_account_api_x_accounts__account_id__toggle_patch
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/x-accounts/{account_id}/enable:
+    patch:
+      tags:
+      - X Account Management
+      summary: Enable X Account
+      description: Enable an X account for scraping. Idempotent - safe to call multiple
+        times.
+      operationId: enable_x_account_api_x_accounts__account_id__enable_patch
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/x-accounts/{account_id}/disable:
+    patch:
+      tags:
+      - X Account Management
+      summary: Disable X Account
+      description: Disable an X account from scraping. Idempotent - safe to call multiple
+        times.
+      operationId: disable_x_account_api_x_accounts__account_id__disable_patch
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XAccount'
+        '401':
+          description: Missing API key
+        '403':
+          description: Invalid API key
+        '404':
+          description: X account not found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /:
     get:
       tags:
@@ -2421,6 +2693,128 @@ components:
       - msg
       - type
       title: ValidationError
+    XAccount:
+      properties:
+        id:
+          type: string
+          title: Id
+        username:
+          type: string
+          title: Username
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        user_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Id
+        language:
+          $ref: '#/components/schemas/FeedLanguage'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+        post_count:
+          type: integer
+          title: Post Count
+        last_fetched:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Fetched
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - user_id
+      - language
+      - category
+      - enabled
+      - post_count
+      - last_fetched
+      - created_at
+      - updated_at
+      title: XAccount
+      description: X/Twitter account response model.
+    XAccountCreate:
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          minLength: 1
+          pattern: ^[A-Za-z0-9_]+$
+          title: Username
+        display_name:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Display Name
+        language:
+          allOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          default: en
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      type: object
+      required:
+      - username
+      title: XAccountCreate
+      description: Create a new X/Twitter account to follow.
+    XAccountUpdate:
+      properties:
+        username:
+          anyOf:
+          - type: string
+            maxLength: 50
+            minLength: 1
+            pattern: ^[A-Za-z0-9_]+$
+          - type: 'null'
+          title: Username
+        display_name:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Display Name
+        language:
+          anyOf:
+          - $ref: '#/components/schemas/FeedLanguage'
+          - type: 'null'
+        category:
+          anyOf:
+          - $ref: '#/components/schemas/FeedCategory'
+          - type: 'null'
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+      type: object
+      title: XAccountUpdate
+      description: Update an existing X account.
   securitySchemes:
     APIKeyHeader:
       type: apiKey

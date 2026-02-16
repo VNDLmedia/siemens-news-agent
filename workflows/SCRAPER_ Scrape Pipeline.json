@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All (wartet auf beide)\n                       │\n                       ▼\n               Daten vorhanden?\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- Schedule: Alle 15 Min\n- Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel",
+        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   ├──► X API Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All (wartet auf alle drei)\n                       │\n                       ▼\n               Filter Valid (URL vorhanden?)\n                       │\n                       ▼\n               Check Existing URLs (DB)\n                       │\n                       ▼\n               Filter New Only (Dedupe)\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- Schedule: Alle 15 Min\n- Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- SCRAPER: X API\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel\n\n### Dedupe\nNur neue Artikel werden an GPT gesendet!",
         "height": 560,
         "width": 320
       },
@@ -111,7 +111,38 @@
       "continueOnFail": true
     },
     {
-      "parameters": {},
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "XApiScraperWorkflow",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/XApiScraperWorkflow",
+          "cachedResultName": "SCRAPER: X API"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "x-api-scraper-call-node",
+      "name": "Call X API Scraper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        1632
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
       "id": "3ccb1688-f20b-45c8-92fa-e01303c3f7e5",
       "name": "Merge All",
       "type": "n8n-nodes-base.merge",
@@ -131,6 +162,40 @@
       "typeVersion": 2,
       "position": [
         1696,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT url FROM articles WHERE fetched_at >= NOW() - INTERVAL '7 days'",
+        "options": {}
+      },
+      "id": "get-existing-urls-node",
+      "name": "Get Existing URLs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1808,
+        928
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get existing URLs from DB query result\nconst existingUrls = new Set(\n  $input.all()\n    .filter(item => item.json.url)\n    .map(item => item.json.url)\n);\n\n// Get original articles from Filter Valid node\nconst originalArticles = $('Filter Valid').all();\n\n// Filter out articles that already exist in DB\nconst newArticles = originalArticles.filter(item => {\n  const url = item.json.url;\n  if (!url) return false;\n  return !existingUrls.has(url);\n});\n\nif (newArticles.length === 0) {\n  return [{ json: { _empty: true, message: 'Alle Artikel bereits in DB vorhanden' } }];\n}\n\nconsole.log(`Filtered: ${originalArticles.length} total, ${existingUrls.size} existing, ${newArticles.length} new`);\n\nreturn newArticles;"
+      },
+      "id": "filter-new-only-node",
+      "name": "Filter New Only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
         928
       ]
     },
@@ -182,7 +247,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1920,
+        2144,
         928
       ]
     },
@@ -195,7 +260,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2040,
+        2368,
         928
       ]
     },
@@ -210,7 +275,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        2280,
+        2592,
         928
       ],
       "credentials": {
@@ -230,7 +295,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2520,
+        2816,
         928
       ]
     },
@@ -262,6 +327,11 @@
             "node": "Call RSS Feeds Scraper",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Call X API Scraper",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -276,6 +346,11 @@
           },
           {
             "node": "Call RSS Feeds Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call X API Scraper",
             "type": "main",
             "index": 0
           }
@@ -304,6 +379,17 @@
         ]
       ]
     },
+    "Call X API Scraper": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
     "Merge All": {
       "main": [
         [
@@ -316,6 +402,28 @@
       ]
     },
     "Filter Valid": {
+      "main": [
+        [
+          {
+            "node": "Get Existing URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing URLs": {
+      "main": [
+        [
+          {
+            "node": "Filter New Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Only": {
       "main": [
         [
           {
@@ -369,6 +477,11 @@
           },
           {
             "node": "Call Google News Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call X API Scraper",
             "type": "main",
             "index": 0
           }

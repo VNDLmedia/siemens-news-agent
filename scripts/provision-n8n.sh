@@ -119,6 +119,24 @@ else
     echo "  - API Header Auth credential (API_KEY not set)"
 fi
 
+# X/Twitter API Bearer Token credential
+if [ -n "$X_API_KEY" ]; then
+    cat > /tmp/creds/x-api-bearer.json << EOF
+{
+  "id": "x-api-bearer",
+  "name": "X API Bearer Token",
+  "type": "httpHeaderAuth",
+  "data": {
+    "name": "Authorization",
+    "value": "Bearer ${X_API_KEY}"
+  }
+}
+EOF
+    echo "  + X API Bearer Token credential"
+else
+    echo "  - X API Bearer Token credential (X_API_KEY not set)"
+fi
+
 # =====================================================
 # Step 2: Import credentials (must happen before workflows)
 # =====================================================
@@ -171,8 +189,15 @@ const credMap = {
     'openAiApi': 'news-agent-openai',
     'postgres': 'news-agent-postgres',
     'smtp': 'news-agent-smtp',
-    'telegramApi': 'news-agent-telegram',
-    'httpHeaderAuth': 'news-agent-api-key'
+    'telegramApi': 'news-agent-telegram'
+};
+
+// Special handling for httpHeaderAuth - multiple credentials of same type
+const httpHeaderAuthMap = {
+    'news-agent-api-key': 'news-agent-api-key',
+    'x-api-bearer': 'x-api-bearer',
+    'News Agent API Key': 'news-agent-api-key',
+    'X API Bearer Token': 'x-api-bearer'
 };
 
 // Recursively find and update credential references
@@ -181,8 +206,25 @@ function updateCredentials(obj) {
     
     if (obj.credentials && typeof obj.credentials === 'object') {
         for (const [credType, credInfo] of Object.entries(obj.credentials)) {
-            if (credMap[credType] && credInfo && typeof credInfo === 'object') {
-                credInfo.id = credMap[credType];
+            if (credInfo && typeof credInfo === 'object') {
+                // Special handling for httpHeaderAuth - match by existing ID or name
+                if (credType === 'httpHeaderAuth') {
+                    const existingId = credInfo.id || '';
+                    const existingName = credInfo.name || '';
+                    if (httpHeaderAuthMap[existingId]) {
+                        credInfo.id = httpHeaderAuthMap[existingId];
+                    } else if (httpHeaderAuthMap[existingName]) {
+                        credInfo.id = httpHeaderAuthMap[existingName];
+                    }
+                    // Default to news-agent-api-key if not matched
+                    else if (!credInfo.id) {
+                        credInfo.id = 'news-agent-api-key';
+                    }
+                }
+                // Standard credential types
+                else if (credMap[credType]) {
+                    credInfo.id = credMap[credType];
+                }
             }
         }
     }

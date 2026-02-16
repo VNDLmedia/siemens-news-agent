@@ -509,6 +509,117 @@ async def get_recipient_emails(recipient_ids: Optional[List[str]] = None) -> Lis
         return [row["email"] for row in rows]
 
 
+# X Account operations
+async def create_x_account(username: str, display_name: Optional[str], language: str, category: Optional[str], enabled: bool) -> Dict[str, Any]:
+    """Create a new X account."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO x_accounts (username, display_name, language, category, enabled)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, username, display_name, user_id, language, category, enabled, post_count, last_fetched, created_at, updated_at
+            """,
+            username, display_name, language, category, enabled
+        )
+        return dict(row)
+
+
+async def get_x_accounts(enabled_only: bool = False) -> List[Dict[str, Any]]:
+    """Get all X accounts."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        query = "SELECT * FROM x_accounts"
+        if enabled_only:
+            query += " WHERE enabled = TRUE"
+        query += " ORDER BY created_at DESC"
+        rows = await conn.fetch(query)
+        return [dict(row) for row in rows]
+
+
+async def get_x_account_by_id(account_id: str) -> Optional[Dict[str, Any]]:
+    """Get an X account by ID."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM x_accounts WHERE id = $1",
+            account_id
+        )
+        return dict(row) if row else None
+
+
+async def update_x_account(account_id: str, **kwargs) -> Optional[Dict[str, Any]]:
+    """Update an X account."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Build update query dynamically
+        updates = []
+        values = []
+        param_num = 1
+        
+        for key, value in kwargs.items():
+            if value is not None:
+                updates.append(f"{key} = ${param_num}")
+                values.append(value)
+                param_num += 1
+        
+        if not updates:
+            return await get_x_account_by_id(account_id)
+        
+        values.append(account_id)
+        query = f"""
+            UPDATE x_accounts
+            SET {', '.join(updates)}, updated_at = NOW()
+            WHERE id = ${param_num}
+            RETURNING *
+        """
+        row = await conn.fetchrow(query, *values)
+        return dict(row) if row else None
+
+
+async def delete_x_account(account_id: str) -> bool:
+    """Delete an X account."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM x_accounts WHERE id = $1",
+            account_id
+        )
+        return result == "DELETE 1"
+
+
+async def toggle_x_account_enabled(account_id: str) -> Optional[Dict[str, Any]]:
+    """Toggle X account enabled status."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE x_accounts
+            SET enabled = NOT enabled, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            account_id
+        )
+        return dict(row) if row else None
+
+
+async def set_x_account_enabled(account_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+    """Set X account enabled status explicitly."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE x_accounts
+            SET enabled = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            account_id, enabled
+        )
+        return dict(row) if row else None
+
+
 # Statistics
 async def get_statistics() -> Dict[str, Any]:
     """Get system statistics."""

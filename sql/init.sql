@@ -22,6 +22,21 @@ CREATE TABLE IF NOT EXISTS rss_sources (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- X Accounts table: Manages X/Twitter accounts to follow
+CREATE TABLE IF NOT EXISTS x_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) NOT NULL UNIQUE,
+    display_name TEXT,
+    user_id TEXT,
+    language VARCHAR(10) NOT NULL DEFAULT 'en',
+    category TEXT,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    post_count INTEGER NOT NULL DEFAULT 0,
+    last_fetched TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- Search Queries table: Manages Google News search topics
 CREATE TABLE IF NOT EXISTS search_queries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -84,6 +99,11 @@ CREATE INDEX IF NOT EXISTS idx_rss_sources_url ON rss_sources(url);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_enabled ON rss_sources(enabled) WHERE enabled = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rss_sources_language ON rss_sources(language);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_category ON rss_sources(category);
+
+-- X accounts indexes
+CREATE INDEX IF NOT EXISTS idx_x_accounts_username ON x_accounts(username);
+CREATE INDEX IF NOT EXISTS idx_x_accounts_enabled ON x_accounts(enabled) WHERE enabled = TRUE;
+CREATE INDEX IF NOT EXISTS idx_x_accounts_category ON x_accounts(category);
 
 -- Search queries indexes
 CREATE INDEX IF NOT EXISTS idx_search_queries_query ON search_queries(query);
@@ -188,6 +208,10 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_rss_sources_updated_at BEFORE UPDATE ON rss_sources
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger to automatically update updated_at for x_accounts
+CREATE TRIGGER update_x_accounts_updated_at BEFORE UPDATE ON x_accounts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Trigger to automatically update updated_at for search_queries
 CREATE TRIGGER update_search_queries_updated_at BEFORE UPDATE ON search_queries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -224,6 +248,12 @@ COMMENT ON TABLE rss_sources IS 'Manages RSS/Atom feed sources for news aggregat
 COMMENT ON COLUMN rss_sources.url IS 'Unique RSS/Atom feed URL';
 COMMENT ON COLUMN rss_sources.enabled IS 'TRUE if feed should be actively scraped';
 COMMENT ON COLUMN rss_sources.article_count IS 'Total number of articles fetched from this source';
+
+COMMENT ON TABLE x_accounts IS 'X/Twitter accounts to follow for news scraping';
+COMMENT ON COLUMN x_accounts.username IS 'X/Twitter handle without @ symbol';
+COMMENT ON COLUMN x_accounts.user_id IS 'X/Twitter user ID (fetched from API)';
+COMMENT ON COLUMN x_accounts.enabled IS 'TRUE if account should be actively scraped';
+COMMENT ON COLUMN x_accounts.post_count IS 'Total number of posts fetched from this account';
 
 COMMENT ON TABLE search_queries IS 'Search queries/topics for Google News scraping';
 COMMENT ON COLUMN search_queries.query IS 'Search query string for Google News RSS';

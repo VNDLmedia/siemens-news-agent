@@ -60,6 +60,9 @@ services:
       # Telegram Bot (for input channel)
       TELEGRAM_ACCESS_TOKEN: ${TELEGRAM_ACCESS_TOKEN:-}
       
+      # X/Twitter API (for X scraper)
+      X_API_KEY: ${X_API_KEY:-}
+      
       # Credential provisioning variables
       CRED_POSTGRES_DB: ${POSTGRES_DB:-news_agent}
       CRED_POSTGRES_USER: ${POSTGRES_USER:-n8n}
