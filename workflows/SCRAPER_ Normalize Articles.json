@@ -1,6 +1,5 @@
 {
-  "id": "6AGSjWYEJDPHqgvJ",
-  "name": "Normalize Articles",
+  "name": "SCRAPER: Normalize Articles",
   "nodes": [
     {
       "parameters": {
@@ -13,8 +12,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -1700,
-        -200
+        -1712,
+        -784
       ]
     },
     {
@@ -69,9 +68,9 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "gpt-4o-mini",
+          "value": "gpt-5.2",
           "mode": "list",
-          "cachedResultName": "GPT-4O-MINI"
+          "cachedResultName": "GPT-5.2"
         },
         "messages": {
           "values": [
@@ -117,7 +116,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -448,
+        -400,
         -112
       ]
     },
@@ -209,16 +208,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "84330898-ad03-4e37-a28d-0dced00a7102",
+  "versionId": "23c0b448-5cdc-43d8-9619-b6e7b0ec147b",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "2c9038e79e4f0de69b3e8f277105c48d1cdaae248cdaf2f5ca828ee1f7eccc63"
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
   "id": "6AGSjWYEJDPHqgvJ",
   "tags": []

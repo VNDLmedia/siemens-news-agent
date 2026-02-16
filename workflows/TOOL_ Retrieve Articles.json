@@ -1,0 +1,170 @@
+{
+  "name": "TOOL: Retrieve Articles",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TOOL: Retrieve Articles\n\n**Zweck:** Read-only DB Zugriff auf articles Tabelle.\nWird vom Curator Agent als Tool aufgerufen.\n\n### Input Parameter\n- `topic` (string) - Suchbegriff\n- `days_back` (number) - Zeitraum in Tagen\n- `language` (string) - Sprachfilter (de/en/leer)\n- `category` (string) - Kategoriefilter\n- `priority` (string) - high/medium/low/leer\n- `limit` (number) - Max Ergebnisse\n\n### Output\nJSON Array mit Artikeln aus der DB.\nNur SELECT - kein INSERT/UPDATE/DELETE.",
+        "height": 500,
+        "width": 320
+      },
+      "id": "c4bf4964-c2d6-4525-84cd-918020072538",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "topic"
+            },
+            {
+              "name": "days_back",
+              "type": "number"
+            },
+            {
+              "name": "language"
+            },
+            {
+              "name": "category"
+            },
+            {
+              "name": "priority"
+            },
+            {
+              "name": "limit",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "0aa7182b-bb4e-4615-bc36-6ddde73067fa",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Defaults setzen und Input validieren\nconst input = $input.first().json;\n\nconst topic = (input.topic || '').trim();\nconst days_back = Math.min(Math.max(Number(input.days_back) || 1, 1), 30);\nconst language = (input.language || '').trim();\nconst category = (input.category || '').trim();\nconst priority = (input.priority || '').trim();\nconst limit = Math.min(Math.max(Number(input.limit) || 20, 1), 50);\n\nreturn [{\n  json: { topic, days_back, language, category, priority, limit }\n}];"
+      },
+      "id": "014a6308-1aee-4422-8c61-ce5a00d01782",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, url, title, summary, source, source_type, published_at, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category FROM articles WHERE processed = TRUE AND fetched_at >= NOW() - INTERVAL '1 day' * $1 AND ($2 = '' OR language = $2) AND ($3 = '' OR category = $3) AND ($4 = '' OR priority = $4) AND ($5 = '' OR title ILIKE '%' || $5 || '%' OR summary ILIKE '%' || $5 || '%' OR $5 = ANY(topics) OR $5 = ANY(keywords) OR $5 = ANY(companies) OR $5 = ANY(persons)) ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, published_at DESC LIMIT $6",
+        "options": {
+          "queryReplacement": "={{ $json.days_back }},={{ $json.language }},={{ $json.category }},={{ $json.priority }},={{ $json.topic }},={{ $json.limit }}"
+        }
+      },
+      "id": "f4dd8010-ca45-40da-ace5-ac42d560a374",
+      "name": "Query Articles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1360,
+        -160
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ergebnisse zurückgeben\nconst items = $input.all();\nconst articles = items\n  .filter(item => item.json.id)\n  .map(item => ({ json: item.json }));\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, count: 0, message: 'Keine Artikel gefunden' } }];\n}\n\nreturn articles;"
+      },
+      "id": "9a09ddb4-8081-410f-af36-573c7d781d47",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -160
+      ],
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "request": "Newsletter Daily Digest",
+          "days_back": 1,
+          "limit": 30,
+          "topic": "",
+          "language": "",
+          "category": "",
+          "priority": "",
+          "toolCallId": "call_iDutTAjZi9rAbHljAw7Dz6pM"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Query Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Articles": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "768d707e-68a5-4780-8682-3fdff11ca87e",
+  "meta": {
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
+  },
+  "id": "hGOieM4zHNy6XgDS",
+  "tags": []
+}

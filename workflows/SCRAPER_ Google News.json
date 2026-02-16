@@ -1,20 +1,19 @@
 {
-  "id": "TAwPcGi3EepKcWth",
   "name": "SCRAPER: Google News",
   "nodes": [
     {
       "parameters": {
-        "content": "## SCRAPER: Google News\n\n**Zweck:** Holt News von Google News RSS basierend auf Suchbegriffen aus der DB.\n\n### Ablauf\n1. Enabled Queries aus `search_queries` Tabelle laden\n2. Pro Query: Google News RSS abrufen (via Loop)\n3. XML parsen, Items extrahieren\n4. Max 15 Artikel pro Query\n5. Artikel formatieren für Pipeline\n6. Query-Stats aktualisieren\n\n### Trigger\n- ⏰ Schedule: Alle 30 Min\n- 🔗 Webhook: POST /scrape-google-news\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"google_news\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`search_queries` - Suchbegriffe verwalten\n\n### Fix 2026-02-15\nAdded SplitInBatches loop to process\none query at a time (15 articles each).",
-        "height": 540,
+        "content": "## SCRAPER: Google News\n\n**Zweck:** Holt News von Google News RSS basierend auf Suchbegriffen aus der DB.\n\n### Ablauf\n1. Enabled Queries aus `search_queries` Tabelle laden\n2. Pro Query: Google News RSS abrufen\n3. XML parsen, Items extrahieren\n4. Max 15 Artikel pro Query\n5. Artikel formatieren für Pipeline\n6. Query-Stats aktualisieren\n\n### Trigger\n- Schedule: Alle 30 Min\n- Webhook: POST /scrape-google-news\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"google_news\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`search_queries` - Suchbegriffe verwalten",
+        "height": 480,
         "width": 320
       },
-      "id": "info-note",
+      "id": "b26dbffa-c227-46a1-b405-ad89d0af84b6",
       "name": "Info",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -320,
-        -100
+        1040,
+        -288
       ]
     },
     {
@@ -28,13 +27,13 @@
           ]
         }
       },
-      "id": "schedule-trigger",
+      "id": "abaf8502-3bb2-4e39-8aa4-35d628cb9baa",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        0
+        1008,
+        288
       ]
     },
     {
@@ -43,28 +42,15 @@
         "path": "scrape-google-news",
         "options": {}
       },
-      "id": "webhook-trigger",
+      "id": "138b0e46-312c-4d57-a578-e1019f875d18",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        0,
-        192
+        1008,
+        480
       ],
       "webhookId": "scrape-google-news-webhook"
-    },
-    {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
-      "id": "execute-workflow-trigger",
-      "name": "Execute Workflow Trigger",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        0,
-        384
-      ]
     },
     {
       "parameters": {
@@ -72,13 +58,13 @@
         "query": "SELECT id, name, query, language, category FROM search_queries WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 10",
         "options": {}
       },
-      "id": "fetch-queries",
+      "id": "f342b5af-9685-4a07-9752-11a197c0699a",
       "name": "Fetch Enabled Queries",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        240,
-        96
+        1264,
+        480
       ],
       "credentials": {
         "postgres": {
@@ -86,20 +72,6 @@
           "name": "News Agent DB"
         }
       }
-    },
-    {
-      "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
-      "id": "loop-queries",
-      "name": "Loop Queries",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        480,
-        96
-      ]
     },
     {
       "parameters": {
@@ -113,13 +85,13 @@
           "timeout": 15000
         }
       },
-      "id": "fetch-rss",
+      "id": "a07c840e-e817-4cd8-bfa6-7ffbb71cfa2e",
       "name": "Fetch Google News RSS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        720,
-        96
+        1504,
+        480
       ],
       "continueOnFail": true
     },
@@ -127,13 +99,13 @@
       "parameters": {
         "options": {}
       },
-      "id": "parse-xml",
+      "id": "8426b2b3-4aee-412a-8ac5-1f695a6ee93a",
       "name": "Parse XML",
       "type": "n8n-nodes-base.xml",
       "typeVersion": 1,
       "position": [
-        960,
-        96
+        1744,
+        480
       ]
     },
     {
@@ -141,69 +113,56 @@
         "fieldToSplitOut": "rss.channel.item",
         "options": {}
       },
-      "id": "split-items",
+      "id": "b276d2b8-0e50-4817-ad3c-87eabdbfc9e5",
       "name": "Split Items",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        1200,
-        96
+        1984,
+        480
       ]
     },
     {
       "parameters": {
         "maxItems": 15
       },
-      "id": "limit-results",
+      "id": "9b07951c-af6a-4d75-ae43-4b37b980cbc0",
       "name": "Limit Per Query",
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        1440,
-        96
+        2224,
+        480
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Article aus RSS Item + Query Info zusammenstellen\n// Query data comes from the current Loop batch (1 query per iteration)\nconst items = $input.all();\nconst queryData = $('Loop Queries').first()?.json || {};\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  const title = data.title || 'Unbekannter Titel';\n  const link = data.link || '';\n  const pubDate = data.pubDate ? new Date(data.pubDate).toISOString() : null;\n  const sourceName = data.source && data.source._ ? data.source._ : 'Google News';\n  const description = data.description || '';\n  \n  // Content aus description extrahieren (HTML Tags entfernen)\n  let content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  \n  results.push({\n    json: {\n      url: link,\n      title: title,\n      content: content,\n      source: sourceName,\n      source_type: 'google_news',\n      published_at: pubDate,\n      language: queryData.language || 'de',\n      category: queryData.category || 'general',\n      query_name: queryData.name,\n      query_id: queryData.id\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// Article aus RSS Item + Query Info zusammenstellen — alle Items verarbeiten\nconst items = $input.all();\nconst allQueries = $('Fetch Enabled Queries').all();\n\nreturn items.map(item => {\n  const data = item.json;\n\n  // Query-Daten über pairedItem Index holen\n  const pairedIndex = item.pairedItem?.item ?? 0;\n  const queryData = allQueries[pairedIndex]?.json || {};\n\n  const title = data.title || 'Unbekannter Titel';\n  const link = data.link || '';\n  let pubDate = null;\n  if (data.pubDate) {\n    try {\n      pubDate = new Date(data.pubDate).toISOString();\n    } catch(e) {\n      pubDate = null;\n    }\n  }\n  const sourceName = data.source && data.source._ ? data.source._ : 'Google News';\n  const description = data.description || '';\n\n  // Content aus description extrahieren (HTML Tags entfernen)\n  let content = '';\n  if (typeof description === 'string') {\n    content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  }\n\n  return {\n    json: {\n      url: link,\n      title: title,\n      content: content,\n      source: sourceName,\n      source_type: 'google_news',\n      published_at: pubDate,\n      language: queryData.language || 'de',\n      category: queryData.category || 'general',\n      query_name: queryData.name,\n      query_id: queryData.id\n    }\n  };\n});"
       },
-      "id": "format-article",
+      "id": "f45b1bf3-3ae1-4bb6-b25c-e1aa574bf324",
       "name": "Format Article",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Collect ALL articles from Format Article across all loop iterations\nconst items = $('Format Article').all();\nconst articles = [];\n\nfor (const item of items) {\n  const articleData = item.json;\n  if (articleData && articleData.url) {\n    articles.push({\n      json: {\n        url: articleData.url,\n        title: articleData.title,\n        content: articleData.content,\n        source: articleData.source,\n        source_type: articleData.source_type,\n        published_at: articleData.published_at,\n        language: articleData.language,\n        category: articleData.category,\n        query_name: articleData.query_name,\n        query_id: articleData.query_id\n      }\n    });\n  }\n}\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from Google News' } }];\n}\n\nreturn articles;"
-      },
-      "id": "return-articles",
-      "name": "Return Articles",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        720,
-        300
+        2464,
+        480
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE search_queries SET article_count = article_count + $2, last_fetched = NOW() WHERE id = $1",
+        "query": "UPDATE search_queries SET article_count = article_count + 1, last_fetched = NOW() WHERE id = $1",
         "options": {
-          "queryReplacement": "={{ $('Loop Queries').first().json.id }},={{ $input.all().length }}"
+          "queryReplacement": "={{ $json.query_id }}"
         }
       },
-      "id": "update-query-stats",
+      "id": "6786cd08-5523-4dee-9efd-dad74bfd29f9",
       "name": "Update Query Stats",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1920,
-        96
+        2704,
+        480
       ],
       "credentials": {
         "postgres": {
@@ -212,6 +171,38 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all articles and return them for the Pipeline\nconst allFormatted = $('Format Article').all();\nconst articles = allFormatted\n  .filter(item => item.json.url)\n  .map(item => ({\n    json: {\n      url: item.json.url,\n      title: item.json.title,\n      content: item.json.content,\n      source: item.json.source,\n      source_type: item.json.source_type,\n      published_at: item.json.published_at,\n      language: item.json.language,\n      category: item.json.category\n    }\n  }));\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from Google News' } }];\n}\n\nreturn articles;"
+      },
+      "id": "c983dee7-a4b9-4472-897f-49b1f9f8439c",
+      "name": "Return Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "search_keywords"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1008,
+        640
+      ],
+      "id": "cec5f27a-a167-49f0-ba50-ff428a22a017",
+      "name": "When Executed by Another Workflow"
     }
   ],
   "pinData": {},
@@ -238,37 +229,8 @@
         ]
       ]
     },
-    "Execute Workflow Trigger": {
-      "main": [
-        [
-          {
-            "node": "Fetch Enabled Queries",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Fetch Enabled Queries": {
       "main": [
-        [
-          {
-            "node": "Loop Queries",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Loop Queries": {
-      "main": [
-        [
-          {
-            "node": "Return Articles",
-            "type": "main",
-            "index": 0
-          }
-        ],
         [
           {
             "node": "Fetch Google News RSS",
@@ -337,7 +299,18 @@
       "main": [
         [
           {
-            "node": "Loop Queries",
+            "node": "Return Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Queries",
             "type": "main",
             "index": 0
           }
@@ -345,19 +318,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "new-google-news-scraper",
+  "versionId": "d1acfa0a-b5a9-482c-b4dc-04702fe58f64",
   "meta": {
-    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
   "id": "TAwPcGi3EepKcWth",
   "tags": [
     {
+      "updatedAt": "2026-02-15T19:06:23.198Z",
+      "createdAt": "2026-02-15T19:06:23.198Z",
       "id": "scraper-tag",
       "name": "scraper"
     }

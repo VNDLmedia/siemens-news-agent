@@ -1,5 +1,4 @@
 {
-  "id": "kN9aFFAMemmCZtinbEC4b",
   "name": "UPDATER: RSS Feed Discovery",
   "nodes": [
     {
@@ -14,7 +13,7 @@
       "typeVersion": 1,
       "position": [
         3280,
-        850
+        864
       ]
     },
     {
@@ -34,47 +33,6 @@
       "position": [
         3584,
         960
-      ]
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "discover-rss-feeds",
-        "options": {
-          "responseMode": "lastNode"
-        }
-      },
-      "id": "discover-webhook-trigger",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1.1,
-      "position": [
-        3584,
-        792
-      ],
-      "webhookId": "discover-rss-feeds-webhook"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "parse-message",
-              "name": "message",
-              "value": "={{ $json.message || $json.body?.message }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "parse-webhook-input",
-      "name": "Parse Webhook Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        3808,
-        792
       ]
     },
     {
@@ -148,9 +106,9 @@
       "parameters": {
         "model": {
           "__rl": true,
-          "value": "gpt-4o",
+          "value": "gpt-5.2",
           "mode": "list",
-          "cachedResultName": "gpt-4o"
+          "cachedResultName": "gpt-5.2"
         },
         "builtInTools": {
           "webSearch": {
@@ -214,28 +172,6 @@
         ]
       ]
     },
-    "Webhook Trigger": {
-      "main": [
-        [
-          {
-            "node": "Parse Webhook Input",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Webhook Input": {
-      "main": [
-        [
-          {
-            "node": "Discovery Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Tool: RSS Validator": {
       "ai_tool": [
         [
@@ -276,10 +212,10 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "8c51bf9f-74cc-4eb7-86e7-049a7a537f78",
+  "versionId": "c840dc37-ddd1-4619-b6c6-76d5f6017c43",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
   "id": "kN9aFFAMemmCZtinbEC4b",
   "tags": []

@@ -1,0 +1,400 @@
+{
+  "name": "GHOSTWRITER: Social Media",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## GHOSTWRITER: Social Media\n\n**Zweck:** Generiert Posts für LinkedIn und X/Twitter.\n\n### Input\n- `raw_content`: News/Artikel-Text\n- `style`: professional, storytelling, engagement, informative, provocative\n- `platform`: linkedin, x (default: linkedin)\n\n### Output\n```json\n{\n  \"response\": \"Fertiger Post...\",\n  \"platform\": \"linkedin\",\n  \"char_count\": 850\n}\n```\n\n### X/Twitter Validation\n- Max 280 Zeichen (strikt)\n- Retry-Loop bis zu 3x bei Überschreitung\n- URL t.co Encoding berücksichtigt",
+        "height": 400,
+        "width": 300
+      },
+      "id": "d4f4a9ab-aeab-41e7-b40a-eaf69f02e514",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "raw_content"
+            },
+            {
+              "name": "style"
+            },
+            {
+              "name": "platform"
+            }
+          ]
+        }
+      },
+      "id": "85e7d7b0-5cfb-4a19-9fff-e0b2679501e9",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        2896,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst platform = (input.platform || 'linkedin').toLowerCase().trim();\nconst style = (input.style || 'professional').toLowerCase().trim();\nconst raw_content = (input.raw_content || '').trim();\n\nif (!raw_content) {\n  return [{ json: { response: 'Fehler: Kein Content übergeben.', platform, char_count: 0 } }];\n}\n\n// Platform-spezifische Regeln\nconst platformRules = platform === 'x'\n  ? `PLATFORM: X/Twitter\n- Maximal 270 Zeichen (Puffer für URL-Encoding, Limit ist 280)\n- Hashtags zählen zum Zeichenlimit, max 2 Hashtags\n- Erster Satz ist der Hook — Frage, Bold Claim oder Zahl\n- Kein \"Breaking\" oder Clickbait-Floskeln\n- Keine Emojis am Satzanfang\n- Extrem prägnant und teilbar`\n  : `PLATFORM: LinkedIn\n- Max 1.500 Zeichen (Sweet Spot für Algorithmus)\n- Erste Zeile ist der Hook — muss zum Weiterlesen zwingen\n- Nach dem Hook eine Leerzeile\n- Kurze Absätze (1-3 Sätze), viel Whitespace\n- Letzter Absatz: klarer CTA oder Frage an die Community\n- Max 5 Hashtags, ganz am Ende, durch Leerzeile getrennt\n- Keine Emojis als Bullet Points`;\n\nreturn [{ json: { raw_content, style, platform, platformRules } }];"
+      },
+      "id": "ddd8cf2d-e296-4c63-8bf1-e9c686ebe5fc",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Du bist ein Social Media Ghostwriter. Du schreibst Posts die performen.\n\n{{ $json.platformRules }}\n\nSTYLE-INTERPRETATION:\n- \"professional\" = Thought Leadership, Branchenexpertise, datengetrieben\n- \"storytelling\" = Persönliche Erfahrung, Verletzlichkeit, Lesson Learned, Ich-Perspektive\n- \"engagement\" = Kontroverse These, Frage an Community, polarisierend aber respektvoll\n- \"informative\" = Fakten-first, Erkenntnisse teilen, edukativer Ton\n- \"provocative\" = Konventionen hinterfragen, starke Meinung, kurze Sätze\n\nVERBOTEN:\n- \"Ich freue mich mitteilen zu dürfen\" oder ähnliche Klischees\n- Übertriebenes Emoji-Spam\n- Leere Buzzwords ohne Substanz\n- \"Agree?\" als einziger CTA\n- Selbstbeweihräucherung ohne Mehrwert\n\nOUTPUT: Nur der fertige Post. Kein Kommentar, keine Erklärung.",
+              "role": "=system"
+            },
+            {
+              "content": "=Thema: {{ $json.raw_content }}\nStyle: {{ $json.style }}",
+              "role": "=user"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1000,
+          "temperature": 0.4
+        }
+      },
+      "id": "ace4c4e1-d515-44f5-ae3e-5aa803378062",
+      "name": "GPT Ghostwriter",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        3312,
+        608
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Post validieren — X braucht Zeichenlimit, LinkedIn nicht\nconst input = $input.first().json;\nconst platform = $('Prepare').first().json.platform;\n\nconst text = (input.message?.content || input.post || '').trim();\nconst retries = input.retries || 0;\n\nif (platform !== 'x') {\n  // LinkedIn: Direkt durchlassen\n  return [{ json: { isValid: true, post: text, platform, adjustedLength: text.length, retries: 0 } }];\n}\n\n// X/Twitter: Zeichenlimit prüfen\nconst T_CO_LENGTH = 23;\nconst MAX_LENGTH = 280;\n\nconst urlRegex = /https?:\\/\\/[^\\s]+/g;\nconst urls = text.match(urlRegex) || [];\n\nlet adjustedLength = text.length;\nfor (const url of urls) {\n  adjustedLength = adjustedLength - url.length + T_CO_LENGTH;\n}\n\nconst emojiRegex = /\\p{Emoji_Presentation}|\\p{Extended_Pictographic}/gu;\nconst emojis = text.match(emojiRegex) || [];\nfor (const emoji of emojis) {\n  adjustedLength = adjustedLength - emoji.length + 2;\n}\n\nconst isValid = adjustedLength <= MAX_LENGTH && text.length > 0;\n\nreturn [{ json: { isValid, post: text, platform, adjustedLength, retries } }];"
+      },
+      "id": "01181b05-162d-423d-9d0d-a65f93d35239",
+      "name": "Validate Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3632,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "is-valid",
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "49a1e6cf-804c-4ffa-909f-dc4d327595f3",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3872,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "out-response",
+              "name": "response",
+              "value": "={{ $json.post }}",
+              "type": "string"
+            },
+            {
+              "id": "out-platform",
+              "name": "platform",
+              "value": "={{ $json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "out-chars",
+              "name": "char_count",
+              "value": "={{ $json.adjustedLength }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f21b7547-bdaa-44fc-8c5c-f4ea0f967a9a",
+      "name": "Return Post",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4112,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "retry-check",
+              "leftValue": "={{ $json.retries }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "40a93868-c8f9-4e50-8fcb-5e2fbd778b35",
+      "name": "Retries < 3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3872,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Du korrigierst X/Twitter Posts die das Zeichenlimit überschreiten.\n\nREGELN:\n- Kürze auf max 270 Zeichen\n- Erhalte den Kerninhalt und Ton\n- Hashtags reduzieren bevor Inhalt gekürzt wird\n- Keine neuen Informationen hinzufügen\n\nOUTPUT: Nur der korrigierte Post. Nichts anderes.",
+              "role": "=system"
+            },
+            {
+              "content": "=Dieser Post ist {{ $json.adjustedLength }} Zeichen lang (max 280). Kürze ihn:\n\n{{ $json.post }}",
+              "role": "=user"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.2
+        }
+      },
+      "id": "5c046f1a-090c-48b0-b018-509968deed37",
+      "name": "Correction",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        4112,
+        816
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst prevRetries = $('Validate Post').first().json.retries || 0;\n\nreturn [{ json: {\n  post: input.message.content,\n  retries: prevRetries + 1\n}}];"
+      },
+      "id": "91eed506-6b2a-4c63-bf15-1b29870f118e",
+      "name": "Increment Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4352,
+        816
+      ]
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "raw_content": "Siemens investiert 500 Millionen Euro in neue Solarfabrik in Bayern",
+          "style": "professional",
+          "platform": "x"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "GPT Ghostwriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Ghostwriter": {
+      "main": [
+        [
+          {
+            "node": "Validate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Post": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Return Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retries < 3?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retries < 3?": {
+      "main": [
+        [
+          {
+            "node": "Correction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Correction": {
+      "main": [
+        [
+          {
+            "node": "Increment Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Retry": {
+      "main": [
+        [
+          {
+            "node": "Validate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "6149ec6f-a258-40f9-a7b4-1d2807ba34fe",
+  "meta": {
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
+  },
+  "id": "jmzMPebmVdBYKtLiHvpkc",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T11:06:54.397Z",
+      "createdAt": "2026-02-15T11:06:54.397Z",
+      "id": "gi9ovDnn7x6JU3OX",
+      "name": "tool"
+    }
+  ]
+}

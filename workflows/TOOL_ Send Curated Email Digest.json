@@ -1,6 +1,5 @@
 {
-  "id": "send-curated-digest-workflow",
-  "name": "Send Curated Digest",
+  "name": "TOOL: Send Curated Email Digest",
   "nodes": [
     {
       "parameters": {
@@ -18,8 +17,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        280,
-        300
+        288,
+        304
       ]
     },
     {
@@ -33,8 +32,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        280,
-        500
+        288,
+        512
       ],
       "webhookId": "send-curated-digest-webhook"
     },
@@ -49,7 +48,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        504,
+        512,
         400
       ],
       "credentials": {
@@ -87,13 +86,12 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        728,
+        736,
         400
       ]
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "// Collect all recipient emails into a single item\nconst recipients = $input.all().map(item => item.json.email);\n\nreturn {\n  json: {\n    recipient_emails: recipients,\n    recipient_count: recipients.length\n  }\n};"
       },
       "id": "collect-recipients",
@@ -101,8 +99,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        952,
-        380
+        960,
+        384
       ]
     },
     {
@@ -173,15 +171,16 @@
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
-        }
+        },
+        "options": {}
       },
       "id": "call-curator",
       "name": "Call News Curator",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1176,
-        380
+        1184,
+        384
       ]
     },
     {
@@ -212,8 +211,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1400,
-        380
+        1408,
+        384
       ]
     },
     {
@@ -225,13 +224,12 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1624,
-        360
+        1632,
+        368
       ]
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "// Split recipients into individual items for loop\nconst emailData = $input.first().json;\nconst emails = emailData.recipient_emails || [];\n\n// Return one item per recipient\nreturn emails.map(email => ({\n  json: {\n    to_email: email,\n    html_content: emailData.html_content,\n    subject: emailData.subject,\n    article_ids: emailData.article_ids,\n    article_count: emailData.article_count\n  }\n}));"
       },
       "id": "split-recipients",
@@ -239,8 +237,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1848,
-        360
+        1856,
+        368
       ]
     },
     {
@@ -256,9 +254,10 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        2072,
-        360
+        2080,
+        368
       ],
+      "webhookId": "2df4b5ef-b5f4-48e0-9cc7-ecaa61d28300",
       "credentials": {
         "smtp": {
           "id": "news-agent-smtp",
@@ -268,23 +267,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// Pre-format article IDs for PostgreSQL array\nconst articleIds = $('Generate Siemens Email').first().json.article_ids || [];\n\n// Format as PostgreSQL UUID array\nconst formatted = articleIds.length > 0 \n  ? '{' + articleIds.join(',') + '}'\n  : '{}';\n\nreturn [{ json: { article_ids_array: formatted } }];"
-      },
-      "id": "prepare-article-ids",
-      "name": "Prepare Article IDs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2176,
-        360
-      ]
-    },
-    {
-      "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE articles SET sent = TRUE WHERE id = ANY($1::uuid[])",
         "options": {
-          "queryReplacement": "={{ $json.article_ids_array }}"
+          "queryReplacement": "={{ '{' + $('Generate Siemens Email').first().json.article_ids.join(',') + '}' }}"
         }
       },
       "id": "mark-sent",
@@ -292,8 +278,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        2416,
-        360
+        2304,
+        368
       ],
       "credentials": {
         "postgres": {
@@ -311,8 +297,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2520,
-        360
+        2528,
+        368
       ]
     },
     {
@@ -324,8 +310,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        952,
-        580
+        960,
+        592
       ]
     },
     {
@@ -337,14 +323,14 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1624,
+        1632,
         560
       ]
     },
     {
       "parameters": {
         "content": "## Send Curated Digest\n\n**⏰ Schedule:** Täglich um 8:00 Uhr\n\n### Ablauf:\n1. Empfänger aus DB laden\n2. News Curator aufrufen (daily_newsletter)\n3. Siemens-formatierte Email generieren\n4. An alle Empfänger senden\n5. Artikel als 'sent' markieren\n\n### Webhook:\nPOST /webhook/send-curated-digest\n\n### Curator-Einstellungen:\n- usecase: daily_newsletter\n- max_articles: 10\n- days_back: 1",
-        "height": 320,
+        "height": 496,
         "width": 280
       },
       "id": "info-note",
@@ -352,8 +338,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        40,
-        260
+        -16,
+        -240
       ]
     }
   ],
@@ -476,17 +462,6 @@
       "main": [
         [
           {
-            "node": "Prepare Article IDs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Article IDs": {
-      "main": [
-        [
-          {
             "node": "Mark Articles Sent",
             "type": "main",
             "index": 0
@@ -510,9 +485,11 @@
   "settings": {
     "executionOrder": "v1"
   },
+  "versionId": "981c0b6c-96cf-4a62-9939-55f0c9ee0169",
   "meta": {
-    "templateCredsSetupCompleted": false
+    "templateCredsSetupCompleted": false,
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
+  "id": "BeKftTiqTpSPxgvH",
   "tags": []
 }
-

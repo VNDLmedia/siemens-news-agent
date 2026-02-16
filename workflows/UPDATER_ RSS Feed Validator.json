@@ -1,5 +1,4 @@
 {
-  "id": "rD_S2_zWqydJCyeTB2MjS",
   "name": "UPDATER: RSS Feed Validator",
   "nodes": [
     {
@@ -13,8 +12,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -180,
-        -140
+        -176,
+        -144
       ]
     },
     {
@@ -104,9 +103,9 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "06fa079a-dedb-41db-a005-24b8e66c9ff6",
+  "versionId": "811c7748-2e89-430d-8915-b39dfd56f4f7",
   "meta": {
-    "instanceId": "ee048f937b376be2929fba64aa732ef79995f4552c3c3f966dab7d6eb6ab8716"
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
   "id": "rD_S2_zWqydJCyeTB2MjS",
   "tags": []

@@ -1,0 +1,353 @@
+{
+  "name": "SCRAPER: RSS Feeds",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SCRAPER: RSS Feeds\n\n**Zweck:** Holt Artikel von RSS/Atom Feeds aus der DB.\n\n### Ablauf\n1. Enabled Feeds aus `rss_sources` Tabelle laden\n2. Pro Feed: RSS/Atom XML abrufen\n3. Format erkennen (RSS 2.0 / Atom)\n4. Items extrahieren, max 20 pro Feed\n5. Artikel formatieren für Pipeline\n6. Feed-Stats aktualisieren\n\n### Trigger\n- Schedule: Alle 30 Min\n- Webhook: POST /scrape-rss-feeds\n\n### Output\n```json\n{\n  url, title, content,\n  source, source_type: \"rss\",\n  published_at, language, category\n}\n```\n\n### DB Tabelle\n`rss_sources` - Feed-URLs verwalten\n\n### Unterstützte Formate\n- RSS 2.0 (rss.channel.item)\n- Atom (feed.entry)",
+        "height": 520,
+        "width": 320
+      },
+      "id": "dcfaaf70-8a37-472a-abc1-0f3483ec7cdf",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -1184
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "7ebbfef4-6cf6-4a3e-ab94-4aa6ed32d799",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-rss-feeds",
+        "options": {}
+      },
+      "id": "2aedf8d5-34f5-465e-9952-650852adec9c",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -272
+      ],
+      "webhookId": "scrape-rss-feeds-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, url, language, category FROM rss_sources WHERE enabled = TRUE ORDER BY last_fetched ASC NULLS FIRST LIMIT 20",
+        "options": {}
+      },
+      "id": "ef095031-b1e8-4f10-9b76-3b50c5f6c678",
+      "name": "Fetch Enabled Feeds",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1312,
+        -272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "f9be9f6c-5244-463c-82cc-56788075afe7",
+      "name": "Fetch RSS Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1552,
+        -272
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ca636baf-bb49-4ad8-bf36-44def125b7dc",
+      "name": "Parse XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// RSS oder Atom Feed Items extrahieren\nconst data = $input.first().json;\n\n// Feed-Daten über pairedItem Index holen\nconst pairedIndex = $input.first().pairedItem?.item ?? 0;\nconst allFeeds = $('Fetch Enabled Feeds').all();\nconst feedData = allFeeds[pairedIndex]?.json || {};\n\nlet items = [];\n\n// RSS 2.0\nif (data.rss && data.rss.channel && data.rss.channel.item) {\n  items = Array.isArray(data.rss.channel.item) ? data.rss.channel.item : [data.rss.channel.item];\n}\n// Atom\nelse if (data.feed && data.feed.entry) {\n  items = Array.isArray(data.feed.entry) ? data.feed.entry : [data.feed.entry];\n}\n\nif (items.length === 0) {\n  return [];\n}\n\n// Limit auf 20 Artikel pro Feed\nitems = items.slice(0, 20);\n\nreturn items.map(item => {\n  let title, link, pubDate, description;\n  \n  // RSS Format\n  if (item.title && typeof item.title === 'string') {\n    title = item.title;\n    link = item.link || '';\n    pubDate = item.pubDate || item.published || '';\n    description = item.description || item.content || item['content:encoded'] || '';\n  }\n  // Atom Format\n  else if (item.title && item.title._) {\n    title = item.title._;\n    link = item.link && item.link.href ? item.link.href : (item.id || '');\n    pubDate = item.updated || item.published || '';\n    description = item.summary ? (item.summary._ || item.summary) : (item.content ? (item.content._ || item.content) : '');\n  }\n  \n  // Content extrahieren (HTML Tags entfernen)\n  let content = '';\n  if (typeof description === 'string') {\n    content = description.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  }\n  \n  return {\n    json: {\n      title: title || 'Unbekannter Titel',\n      link: link,\n      pubDate: pubDate,\n      description: description,\n      content: content,\n      feedData: feedData\n    }\n  };\n});"
+      },
+      "id": "c28cf346-3ed4-4155-b59e-cb764921889d",
+      "name": "Extract Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Article formatieren für DB Insert\nconst items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  const feedData = data.feedData || {};\n\n  let pubDate = null;\n  if (data.pubDate) {\n    try {\n      pubDate = new Date(data.pubDate).toISOString();\n    } catch(e) {\n      pubDate = null;\n    }\n  }\n\n  return {\n    json: {\n      url: data.link || '',\n      title: data.title || 'Unbekannter Titel',\n      content: data.content || '',\n      source: feedData.name || 'RSS Feed',\n      source_type: 'rss',\n      published_at: pubDate,\n      language: feedData.language || 'de',\n      category: feedData.category || 'general',\n      feed_id: feedData.id\n    }\n  };\n});"
+      },
+      "id": "f080d5d4-e9ea-480a-9bcc-a84b37e1367b",
+      "name": "Format Article",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "69a401c1-34d0-4b53-b3c7-0852d8eab68b",
+      "name": "Filter Valid Articles",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rss_sources SET article_count = article_count + 1, last_fetched = NOW() WHERE id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.feed_id }}"
+        }
+      },
+      "id": "b9082e3d-2f86-46dc-9609-cd55444eb5e6",
+      "name": "Update Feed Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2768,
+        -288
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "news-agent-postgres",
+          "name": "News Agent DB"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all articles and return them for the Pipeline\nconst allFormatted = $('Format Article').all();\nconst articles = allFormatted\n  .filter(item => item.json.url)\n  .map(item => ({\n    json: {\n      url: item.json.url,\n      title: item.json.title,\n      content: item.json.content,\n      source: item.json.source,\n      source_type: item.json.source_type,\n      published_at: item.json.published_at,\n      language: item.json.language,\n      category: item.json.category\n    }\n  }));\n\nif (articles.length === 0) {\n  return [{ json: { _empty: true, message: 'No articles from RSS Feeds' } }];\n}\n\nreturn articles;"
+      },
+      "id": "09e77b90-119c-4a4a-833a-588f3c8e3ab7",
+      "name": "Return Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2992,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -80
+      ],
+      "id": "e77ab586-4a68-4b19-a987-42480fe259f8",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Enabled Feeds": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Parse XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse XML": {
+      "main": [
+        [
+          {
+            "node": "Extract Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Items": {
+      "main": [
+        [
+          {
+            "node": "Format Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Article": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Articles": {
+      "main": [
+        [
+          {
+            "node": "Update Feed Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Feed Stats": {
+      "main": [
+        [
+          {
+            "node": "Return Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Fetch Enabled Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2346ac36-b3ce-423c-ab31-97026fece80b",
+  "meta": {
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
+  },
+  "id": "jBs4v5XzeetXiWlr",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T19:06:23.198Z",
+      "createdAt": "2026-02-15T19:06:23.198Z",
+      "id": "scraper-tag",
+      "name": "scraper"
+    }
+  ]
+}

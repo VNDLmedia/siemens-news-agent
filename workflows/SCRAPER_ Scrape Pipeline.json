@@ -1,20 +1,19 @@
 {
-  "id": "scrape-pipeline-workflow",
-  "name": "Scrape Pipeline",
+  "name": "SCRAPER: Scrape Pipeline",
   "nodes": [
     {
       "parameters": {
-        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All\n                       │\n                       ▼\n               Daten vorhanden?\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- ⏰ Schedule: Alle 15 Min\n- 🔗 Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel",
+        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All (wartet auf beide)\n                       │\n                       ▼\n               Daten vorhanden?\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- Schedule: Alle 15 Min\n- Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel",
         "height": 560,
         "width": 320
       },
-      "id": "info-note",
+      "id": "9ac131a8-90e3-4a3b-b59f-b3f0784b50bd",
       "name": "Info",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -560,
-        -50
+        544,
+        192
       ]
     },
     {
@@ -28,13 +27,13 @@
           ]
         }
       },
-      "id": "7621e647-d5a1-4629-8273-67f7173ce689",
+      "id": "c97cd738-ce27-4ed0-884b-daca5ca96864",
       "name": "Every 15 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        -288,
-        192
+        976,
+        752
       ]
     },
     {
@@ -43,13 +42,13 @@
         "path": "scrape-pipeline",
         "options": {}
       },
-      "id": "f4e0a0c5-7550-46d8-8014-025e1dd433d8",
+      "id": "7fd4902d-71fa-431b-8f43-ebff1e271e90",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        -288,
-        384
+        976,
+        944
       ],
       "webhookId": "scrape-pipeline-webhook"
     },
@@ -72,13 +71,13 @@
         },
         "options": {}
       },
-      "id": "faf76326-c4b9-4711-81af-5e3ee75eab1c",
+      "id": "31aa59a4-ffb6-422c-9125-40c099e87c44",
       "name": "Call Google News Scraper",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        0,
-        0
+        1264,
+        704
       ],
       "continueOnFail": true
     },
@@ -101,59 +100,38 @@
         },
         "options": {}
       },
-      "id": "d55c0bf5-60dc-4d5a-b9f6-f659df2febaf",
+      "id": "f7e7b51a-c65f-4144-bfda-4a27648ef4dc",
       "name": "Call RSS Feeds Scraper",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        0,
-        224
+        1264,
+        1168
       ],
       "continueOnFail": true
     },
     {
-      "parameters": {
-        "jsCode": "const allItems = $input.all();\nconst merged = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  if (!d || Object.keys(d).length === 0) continue;\n  if (d.error) continue;\n  merged.push({ json: d });\n}\n\nif (merged.length === 0) {\n  return [{ json: { _empty: true, message: 'Keine Daten von Scrapern' } }];\n}\n\nreturn merged;"
-      },
-      "id": "c0051cb8-5224-49d7-924d-3ac9db6c19df",
+      "parameters": {},
+      "id": "3ccb1688-f20b-45c8-92fa-e01303c3f7e5",
       "name": "Merge All",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
       "position": [
-        272,
-        224
+        1488,
+        928
       ]
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "has-url",
-              "leftValue": "={{ $json.url }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+        "jsCode": "// Leere Items und Fehler rausfiltern\nconst items = $input.all();\nconst valid = items.filter(item => {\n  const d = item.json;\n  if (!d || Object.keys(d).length === 0) return false;\n  if (d._empty) return false;\n  if (d.error) return false;\n  if (!d.url) return false;\n  return true;\n});\n\nif (valid.length === 0) {\n  return [{ json: { _empty: true, message: 'Keine Daten von Scrapern' } }];\n}\n\nreturn valid;"
       },
-      "id": "6d97ab1f-70ae-4776-8094-1341de3a8bba",
-      "name": "Daten vorhanden?",
-      "type": "n8n-nodes-base.if",
+      "id": "21fb3832-b50d-4b8b-8501-0b950f5094bc",
+      "name": "Filter Valid",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        224
+        1696,
+        928
       ]
     },
     {
@@ -199,26 +177,13 @@
         },
         "options": {}
       },
-      "id": "8a6c1cae-976e-4eeb-ab67-fa80c5eda04b",
+      "id": "806bb4ab-d2f9-4cb0-8996-af56ef11fdf7",
       "name": "Normalize + Analyze",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        720,
-        144
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pre-format arrays for PostgreSQL insertion\nconst items = $input.all();\n\nreturn items.map(item => {\n  const d = item.json;\n  \n  // Helper to format array for PostgreSQL\n  const formatArray = (arr) => {\n    if (!arr || !Array.isArray(arr) || arr.length === 0) return '{}';\n    // Escape quotes and format as PostgreSQL array\n    const escaped = arr.map(v => String(v).replace(/\"/g, '\\\\\"'));\n    return '{\"' + escaped.join('\",\"') + '\"}';\n  };\n  \n  return {\n    json: {\n      url: d.url || '',\n      title: d.title || '',\n      content: d.content || '',\n      source: d.source || '',\n      source_type: d.source_type || '',\n      published_at: d.published_at || null,\n      summary: d.summary || '',\n      sentiment: d.sentiment || '',\n      sentiment_score: d.sentiment_score || null,\n      priority: d.priority || '',\n      priority_reason: d.priority_reason || '',\n      topics: formatArray(d.topics),\n      keywords: formatArray(d.keywords),\n      companies: formatArray(d.companies),\n      persons: formatArray(d.persons),\n      regions: formatArray(d.regions),\n      language: d.language || 'de',\n      category: d.category || 'general',\n      relevance_match: formatArray(d.relevance_match)\n    }\n  };\n});"
-      },
-      "id": "prepare-for-db",
-      "name": "Prepare for DB",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        960,
-        144
+        1920,
+        928
       ]
     },
     {
@@ -226,16 +191,16 @@
         "operation": "executeQuery",
         "query": "INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, TRUE, FALSE) ON CONFLICT (url) DO NOTHING",
         "options": {
-          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ $json.topics }},={{ $json.keywords }},={{ $json.companies }},={{ $json.persons }},={{ $json.regions }},={{ $json.language }},={{ $json.category }},={{ $json.relevance_match }}"
+          "queryReplacement": "={{ $json.url }},={{ $json.title }},={{ $json.content }},={{ $json.source }},={{ $json.source_type }},={{ $json.published_at }},={{ $json.summary }},={{ $json.sentiment }},={{ $json.sentiment_score }},={{ $json.priority }},={{ $json.priority_reason }},={{ '{' + ($json.topics || []).join(',') + '}' }},={{ '{' + ($json.keywords || []).join(',') + '}' }},={{ '{' + ($json.companies || []).join(',') + '}' }},={{ '{' + ($json.persons || []).join(',') + '}' }},={{ '{' + ($json.regions || []).join(',') + '}' }},={{ $json.language }},={{ $json.category }},={{ '{' + ($json.relevance_match || []).join(',') + '}' }}"
         }
       },
-      "id": "5873d7a4-d021-4b73-8907-330715d40130",
+      "id": "0267ecb5-763b-43a7-8ec2-8a63e3c2ce81",
       "name": "DB Insert",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1200,
-        144
+        2160,
+        928
       ],
       "credentials": {
         "postgres": {
@@ -249,14 +214,27 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst total = items.length;\nconst dupes = items.filter(i => i.json.affectedRows === 0).length;\nconst failed = items.filter(i => i.json.error).length;\nconst inserted = total - dupes - failed;\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total,\n    inserted,\n    duplicates: dupes,\n    failed,\n    message: `${inserted} neu, ${dupes} Duplikate, ${failed} Fehler`\n  }\n}];"
       },
-      "id": "e84f9b98-596e-4d87-8718-3586e085450e",
+      "id": "e9819b61-33cb-4e9f-ba06-f0aba1b0d014",
       "name": "Ergebnis",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1440,
-        144
+        2400,
+        928
       ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        976,
+        1120
+      ],
+      "id": "ea3ec70b-9886-4580-a9e7-77276a3776c2",
+      "name": "When Executed by Another Workflow"
     }
   ],
   "pinData": {},
@@ -310,7 +288,7 @@
           {
             "node": "Merge All",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -319,14 +297,14 @@
       "main": [
         [
           {
-            "node": "Daten vorhanden?",
+            "node": "Filter Valid",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Daten vorhanden?": {
+    "Filter Valid": {
       "main": [
         [
           {
@@ -338,17 +316,6 @@
       ]
     },
     "Normalize + Analyze": {
-      "main": [
-        [
-          {
-            "node": "Prepare for DB",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare for DB": {
       "main": [
         [
           {
@@ -369,17 +336,33 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Call RSS Feeds Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call Google News Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "5322130b-fa8f-41ea-bc29-13ae7fb00db2",
+  "versionId": "01f01249-8e19-4e87-8844-57afc1e849e5",
   "meta": {
-    "instanceId": "2c9038e79e4f0de69b3e8f277105c48d1cdaae248cdaf2f5ca828ee1f7eccc63"
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
   },
   "id": "ba9OG35bDKJwzfPb",
   "tags": []

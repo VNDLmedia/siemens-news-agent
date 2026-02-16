@@ -1,0 +1,327 @@
+{
+  "name": "CURATOR: News Curator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CURATOR: News Curator (AI Agent)\n\n**Zweck:** Kuratiert Artikel per Natural Language.\n\n### Ablauf\n```\nInput (Natural Language)\n        │\n        ▼\n   AI Agent (GPT-4o)\n     │  ▲\n     │  │ Tool Call\n     ▼  │\n  Retrieve Articles (Sub-WF)\n        │\n        ▼\n  JSON Array mit kuratierten Artikeln\n```\n\n### Input Beispiele\n- \"Newsletter Daily Digest\"\n- \"Siemens Solar\"\n- \"News des Tages\"\n- \"Breaking News letzte 6 Stunden\"\n- \"Executive Briefing Energie\"\n\n### Trigger\n- Execute Workflow Trigger\n- Webhook: POST /curate-news\n\n### Output\nJSON Array mit kuratierten Artikeln",
+        "height": 560,
+        "width": 320
+      },
+      "id": "882bbddd-b6ed-4a5c-bc9d-bf1fd370db5c",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "request"
+            }
+          ]
+        }
+      },
+      "id": "23bcf611-6c52-4bd6-afe8-a61b1ffb5775",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "curate-news",
+        "options": {}
+      },
+      "id": "78bb3a6c-0ec1-47a5-9b5b-cd0d4d1dfe35",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        752
+      ],
+      "webhookId": "curate-news-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract-request",
+              "name": "request",
+              "value": "={{ $json.request || $json.body?.request || 'Daily Newsletter' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a5a3059b-e5ff-4565-ad1c-424f2aae486e",
+      "name": "Extract Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2448,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.request }}",
+        "options": {
+          "systemMessage": "Du bist ein erfahrener News-Kurator für ein Unternehmens-Nachrichtensystem.\n\nDeine Aufgabe: Interpretiere die Anfrage des Nutzers und finde die passenden Artikel aus der Datenbank.\n\n## Dein Vorgehen\n1. Analysiere die Anfrage (z.B. \"Newsletter Daily Digest\", \"Siemens Solar\", \"News des Tages\")\n2. Entscheide welche Parameter du für die Datenbanksuche brauchst\n3. Rufe das Tool `retrieve_articles` auf — du kannst es MEHRMALS aufrufen mit verschiedenen Parametern um breite oder spezifische Ergebnisse zu bekommen\n4. Kuratiere die Ergebnisse: Wähle die besten Artikel aus, entferne Duplikate, achte auf Vielfalt\n5. Gib das Ergebnis als JSON zurück\n\n## Tool: retrieve_articles\nParameter:\n- `topic` (string): Suchbegriff — kann leer sein für breite Suche\n- `days_back` (number): Zeitraum 1-30 Tage, Default 1\n- `language` (string): 'de', 'en', oder '' für alle\n- `category` (string): Kategorie-Filter oder '' für alle\n- `priority` (string): 'high', 'medium', 'low', oder '' für alle\n- `limit` (number): Max Ergebnisse 1-50, Default 20\n\n## Strategie je nach Anfrage-Typ\n- **Daily Newsletter / Digest**: Breite Suche (topic leer, days_back 1, limit 30), dann die 10 vielfältigsten auswählen\n- **Themen-Suche** (z.B. \"Siemens Solar\"): Gezielte Suche mit topic, eventuell 2 Aufrufe mit verschiedenen Keywords\n- **Breaking News**: days_back 1, priority 'high', limit 20\n- **Executive Briefing**: priority 'high', category 'business' oder 'technology', limit 20\n\n## Output-Format\nAntworte IMMER mit einem JSON Objekt in diesem Format — KEIN anderer Text davor oder danach:\n```json\n{\n  \"curator_summary\": \"Kurze Beschreibung was du ausgewählt hast und warum\",\n  \"article_count\": 10,\n  \"articles\": [\n    {\n      \"id\": 123,\n      \"url\": \"...\",\n      \"title\": \"...\",\n      \"summary\": \"...\",\n      \"source\": \"...\",\n      \"published_at\": \"...\",\n      \"sentiment\": \"...\",\n      \"priority\": \"...\",\n      \"topics\": [...],\n      \"category\": \"...\"\n    }\n  ]\n}\n```\n\nWichtig:\n- Entferne Duplikate (gleiche Story von verschiedenen Quellen)\n- Achte auf thematische Vielfalt bei Digests/Newsletters\n- Bevorzuge high-priority Artikel\n- Gib nur Artikel zurück die wirklich zur Anfrage passen\n- Dein Output muss valid JSON sein, kein Markdown, keine Erklärungen drumherum"
+        }
+      },
+      "id": "180ca664-01f8-4564-9d88-5bd1fb08e4de",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2688,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "e9af16bd-1c6f-43bd-bb91-30184cdfce55",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2688,
+        848
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "news-agent-openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agent Output parsen und als sauberes JSON zurückgeben\nconst agentOutput = $input.first().json.output || $input.first().json.text || '';\n\ntry {\n  // JSON aus dem Agent Output extrahieren\n  let jsonStr = agentOutput;\n  \n  // Falls der Agent Markdown-Codeblocks nutzt\n  const jsonMatch = agentOutput.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (jsonMatch) {\n    jsonStr = jsonMatch[1].trim();\n  }\n  \n  const result = JSON.parse(jsonStr);\n  \n  // Sicherstellen dass articles ein Array ist\n  if (!result.articles || !Array.isArray(result.articles)) {\n    return [{ json: { curator_summary: 'Keine Artikel gefunden', article_count: 0, articles: [] } }];\n  }\n  \n  return [{ json: result }];\n} catch(e) {\n  // Fallback: Agent Output als raw text zurückgeben\n  return [{ json: { curator_summary: 'Parse error', article_count: 0, articles: [], raw_output: agentOutput } }];\n}"
+      },
+      "id": "d894574d-5d0a-4ec2-ba7c-5939c7436ccf",
+      "name": "Parse Agent Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hGOieM4zHNy6XgDS",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/hGOieM4zHNy6XgDS",
+          "cachedResultName": "TOOL: Retrieve Articles"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "days_back": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('days_back', ``, 'number') }}",
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('limit', ``, 'number') }}",
+            "topic": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('topic', ``, 'string') }}",
+            "language": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('language', ``, 'string') }}",
+            "category": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('category', ``, 'string') }}",
+            "priority": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('priority', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "days_back",
+              "displayName": "days_back",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2832,
+        848
+      ],
+      "id": "b0201657-2ad2-46e8-9646-9049d516caaa",
+      "name": "Call 'TOOL: Retrieve Articles'"
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "request": "Newsletter Daily Digest",
+          "name": "Standard Newsletter"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'TOOL: Retrieve Articles'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f59c625f-86ad-4ad5-b115-796fad2ce37a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "42727648df589eb8dbc79f92c7ed3d6dff6852d04ad63ae225b988104757d32d"
+  },
+  "id": "7JZBLepEeQDOlUUJ",
+  "tags": [
+    {
+      "updatedAt": "2026-02-15T19:06:23.198Z",
+      "createdAt": "2026-02-15T19:06:23.198Z",
+      "id": "MxHmZACknmRE8KrD",
+      "name": "sub-workflow"
+    }
+  ]
+}
