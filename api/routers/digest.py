@@ -6,9 +6,9 @@ Digest endpoints.
 """
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import locale
 import html as html_escape
 
@@ -23,6 +23,35 @@ AUTH_RESPONSES = {
     403: {"description": "Invalid API key"},
 }
 
+def _format_digest_date() -> str:
+    """Return date formatted like the digest email header."""
+    try:
+        locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
+        return datetime.now().strftime("%A, %d. %B %Y")
+    except Exception:
+        try:
+            locale.setlocale(locale.LC_TIME, "de_DE")
+            return datetime.now().strftime("%A, %d. %B %Y")
+        except Exception:
+            weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+            months = [
+                "",
+                "Januar",
+                "Februar",
+                "März",
+                "April",
+                "Mai",
+                "Juni",
+                "Juli",
+                "August",
+                "September",
+                "Oktober",
+                "November",
+                "Dezember",
+            ]
+            now = datetime.now()
+            return f"{weekdays[now.weekday()]}, {now.day}. {months[now.month]} {now.year}"
+
 
 def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str = "daily_newsletter") -> str:
     """
@@ -32,35 +61,21 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
     to ensure consistent preview with full corporate identity.
     """
     
-    # Format date in German locale (like workflow)
-    try:
-        # Try to set German locale
-        locale.setlocale(locale.LC_TIME, 'de_DE.UTF-8')
-        date = datetime.now().strftime("%A, %d. %B %Y")
-    except:
-        try:
-            locale.setlocale(locale.LC_TIME, 'de_DE')
-            date = datetime.now().strftime("%A, %d. %B %Y")
-        except:
-            # Fallback to manual formatting
-            weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
-            months = ["", "Januar", "Februar", "März", "April", "Mai", "Juni", 
-                     "Juli", "August", "September", "Oktober", "November", "Dezember"]
-            now = datetime.now()
-            date = f"{weekdays[now.weekday()]}, {now.day}. {months[now.month]} {now.year}"
+    date = _format_digest_date()
     
     article_count = len(articles)
-    
-    # Siemens logo SVG as base64 data URI (exact from workflow)
-    logo_base64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDE2LjAuNCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjxzdmcgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjEwMDBweCINCgkgaGVpZ2h0PSIxNTlweCIgdmlld0JveD0iMCAwIDEwMDAgMTU5IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAxMDAwIDE1OTsiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPGcgaWQ9IkJvdW5kaW5nQm94Ij4NCgk8cG9seWdvbiBzdHlsZT0iZmlsbDpub25lOyIgcG9pbnRzPSIwLDE1OSAxMDAwLDE1OSAxMDAwLDAgMCwwIDAsMCAJIi8+DQo8L2c+DQo8ZyBpZD0iU0lFTUVOUyI+DQoJPGc+DQoJCTxwYXRoIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBkPSJNMy4wODYsMTUyLjUzN1YxMjIuNDYNCgkJCWMxNy4xMTksNS4zODgsMzIuMjY3LDguMDgyLDQ1LjQ0NCw4LjA4MmMxOC4xOTMsMCwyNy4yOTEtNC44MDksMjcuMjkxLTE0LjQyYzAtMy41ODMtMS4zMjQtNi41OTQtMy45NzgtOS4wMzINCgkJCWMtMi43MTQtMi41ODYtOS42NjUtNi4xNzEtMjAuODM1LTEwLjc2NGMtMjAuMDQyLTguMjQxLTMzLjExMS0xNS4yNjktMzkuMTktMjEuMDgyQzMuOTM5LDY3LjU3MSwwLDU3Ljg5NSwwLDQ2LjIwMg0KCQkJQzAsMzEuMTQ0LDUuNzQsMTkuNjY3LDE3LjIxMiwxMS43OEMyOC41NTcsMy45NjIsNDMuMzMsMC4wNTcsNjEuNTU0LDAuMDU3YzEwLjA0MSwwLDI0LjU3NCwxLjg0OCw0My41ODMsNS41NDl2MjguOTMzDQoJCQljLTE0LjE0NC01LjY1LTI3LjI3My04LjQ2OS0zOS40MDMtOC40NjljLTE3LjA4MSwwLTI1LjYyMSw0LjY5LTI1LjYyMSwxNC4wOTFjMCwzLjUxNCwxLjcyLDYuMzgsNS4xNjUsOC42MDINCgkJCWMyLjg2NSwxLjc5OCwxMC43NTksNS41OTYsMjMuNjY1LDExLjQwNmMxOC41ODMsOC4yNTMsMzAuOTU0LDE1LjQyNywzNy4xMTgsMjEuNTI5YzcuMzE0LDcuMjM4LDEwLjk3OCwxNi42MDQsMTAuOTc4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTc3LDI5LjA4OC0yMS41MjEsMzcuNzYxYy0xMS42MjEsNy4wMzMtMjYuNjksMTAuNTM1LTQ1LjE5OCwxMC41MzVDMzQuNjksMTU4LjA3OCwxOC45NDIsMTU2LjIzNywzLjA4NiwxNTIuNTM3DQoJCQlMMy4wODYsMTUyLjUzN3oiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMTQxLjA2MywyLjcwNCAxNDEuMDYzLDIuNzA0IDE4My42MDMsMi43MDQgDQoJCQkxODMuNjAzLDE1NS4wMDEgMTQxLjA2MywxNTUuMDAxIAkJIi8+DQoJCTxwb2x5Z29uIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDk5OTk7IiBwb2ludHM9IjIyMi42MTYsMTU1LjAwMSAyMjIuNjE2LDIuNzA0IDMzMS43MjEsMi43MDQgDQoJCQkzMzEuNzIxLDMwLjI1IDI2My42MTYsMzAuMjUgMjYzLjYxNiw2NC42MzkgMzIyLjg5OCw2NC42MzkgMzIyLjg5OCw4OS43NjUgMjYzLjYxNiw4OS43NjUgMjYzLjYxNiwxMjUuOTA2IDMzMy40NzYsMTI1LjkwNiANCgkJCTMzMy40NzYsMTU1LjAwMSAyMjIuNjE2LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iMzYxLjI0NywxNTUuMDAxIDM2MS4yNDcsMi43MDQgNDE2LjQwMiwyLjcwNCANCgkJCTQ1NC43MjEsMTAwLjAxNSA0OTQuMDAxLDIuNzA0IDU0Ni4zOSwyLjcwNCA1NDYuMzksMTU1LjAwMSA1MDYuMDU2LDE1NS4wMDEgNTA2LjA1Niw0Ny4xNzEgNDYxLjM5MiwxNTYuNTQ3IDQzNS4wMjMsMTU2LjU0NyANCgkJCTM5MS4yMTksNDcuMTcxIDM5MS4yMTksMTU1LjAwMSAzNjEuMjQ3LDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNTg1LjQxMSwxNTUuMDAxIDU4NS40MTEsMi43MDQgNjk0LjUxNCwyLjcwNCANCgkJCTY5NC41MTQsMzAuMjUgNjI2LjQxNSwzMC4yNSA2MjYuNDE1LDY0LjYzOSA2ODUuNjk1LDY0LjYzOSA2ODUuNjk1LDg5Ljc2NSA2MjYuNDE1LDg5Ljc2NSA2MjYuNDE1LDEyNS45MDYgNjk2LjI4LDEyNS45MDYgDQoJCQk2OTYuMjgsMTU1LjAwMSA1ODUuNDExLDE1NS4wMDEgCQkiLz4NCgkJPHBvbHlnb24gc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIHBvaW50cz0iNzI0LjI3MSwxNTUuMDAxIDcyNC4yNzEsMi43MDQgNzczLjU3NSwyLjcwNCANCgkJCTgyNS44ODMsMTA0LjY1NSA4MjUuODgzLDIuNzA0IDg1NS44NDcsMi43MDQgODU1Ljg0NywxNTUuMDAxIDgwNy45NDMsMTU1LjAwMSA3NTQuMjQ3LDUxLjY3OCA3NTQuMjQ3LDE1NS4wMDEgNzI0LjI3MSwxNTUuMDAxIAkJDQoJCQkiLz4NCgkJPHBhdGggc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzAwOTk5OTsiIGQ9Ik04ODYuMDQ3LDE1Mi41MzdWMTIyLjQ2DQoJCQljMTYuOTc0LDUuMzg4LDMyLjEyLDguMDgyLDQ1LjQ1Miw4LjA4MmMxOC4xOTUsMCwyNy4yODItNC44MDksMjcuMjgyLTE0LjQyYzAtMy41ODMtMS4yODktNi41OTQtMy44NTQtOS4wMzINCgkJCWMtMi43MjgtMi41ODYtOS43MDgtNi4xNzEtMjAuOTQ1LTEwLjc2NGMtMTkuOTgyLTguMTczLTMzLjA2NC0xNS4xOTgtMzkuMTk5LTIxLjA4MmMtNy44NzUtNy42MDUtMTEuODA3LTE3LjMxNy0xMS44MDctMjkuMTQ2DQoJCQljMC0xNC45OTMsNS43MjYtMjYuNDMyLDE3LjIxLTM0LjMxOWMxMS4zMjgtNy44MTgsMjYuMTE4LTExLjcyMyw0NC4zNDQtMTEuNzIzYzEwLjI0NywwLDIzLjUyNSwxLjYyNywzOS44MSw0Ljg5NmwzLjc2MSwwLjY1Mw0KCQkJdjI4LjkzM2MtMTQuMTQ2LTUuNjUtMjcuMzEzLTguNDY5LTM5LjUwOC04LjQ2OWMtMTcuMDE2LDAtMjUuNTAzLDQuNjktMjUuNTAzLDE0LjA5MWMwLDMuNTE0LDEuNzExLDYuMzgsNS4xNDcsOC42MDINCgkJCWMyLjczLDEuNzI5LDEwLjY1Niw1LjUyOSwyMy43NzgsMTEuNDA2YzE4LjQ0Miw4LjI1MywzMC43ODcsMTUuNDI3LDM3LjAwNSwyMS41MjljNy4zMjUsNy4yMzgsMTAuOTgsMTYuNjA0LDEwLjk4LDI4LjA4NA0KCQkJYzAsMTYuNTAxLTcuMTM1LDI5LjA4OC0yMS40MDYsMzcuNzYxYy0xMS42ODksNy4wMzMtMjYuNzk2LDEwLjUzNS00NS4zMDEsMTAuNTM1DQoJCQlDOTE3LjY0NiwxNTguMDc4LDkwMS44OTEsMTU2LjIzNyw4ODYuMDQ3LDE1Mi41MzdMODg2LjA0NywxNTIuNTM3eiIvPg0KCTwvZz4NCjwvZz4NCjwvc3ZnPg0K"
-    
+
     # Priority badge helper function
     def get_priority_badge(priority):
         if priority == "high":
             return '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-left: 10px;">HIGH</span>'
         elif priority == "medium":
-            return '<span style="background: #f39c12; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-left: 10px;">MEDIUM</span>'
+            return '<span style="background: #000028; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-left: 10px;">MEDIUM</span>'
         return ""
+    
+    # Logo hosted on CDN for email compatibility
+    # TODO: Change to internal Siemens CDN after project handover
+    logo_url = "https://povlib.b-cdn.net/siemens/sie-logo-petrol-rgb.png"
     
     html = f"""
 <!DOCTYPE html>
@@ -69,21 +84,22 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #66667e; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f3f3f0; }}
+    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #66667e; margin: 0; padding: 0; background-color: #f3f3f0; }}
+    .wrapper {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
     .header {{ margin-bottom: 30px; padding-top: 30px; padding-bottom: 30px; border-bottom: 2px solid #009999; }}
     .logo {{ max-width: 200px; height: auto; margin-top: 20px; margin-bottom: 25px; }}
     h1 {{ color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em; }}
     .subtitle {{ color: #9999a9; font-size: 0.9em; margin-top: 5px; }}
-    .article {{ margin-bottom: 30px; padding: 20px; background: #ebebee; border-left: 4px solid #009999; }}
-    .article.high-priority {{ border-left-color: #e74c3c; }}
-    .article.medium-priority {{ border-left-color: #f39c12; }}
+    .article {{ margin-bottom: 30px; padding: 20px; background: #ebebee; border-left: 4px solid #00c1b6; }}
+    .article.high-priority {{ border-left-color: #00c1b6; }}
+    .article.medium-priority {{ border-left-color: #00c1b6; }}
     .article h2 {{ margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em; }}
     .article-meta {{ color: #9999a9; font-size: 0.85em; margin-bottom: 10px; }}
     .summary {{ margin: 15px 0; color: #66667e; }}
     .keywords {{ margin-top: 10px; }}
     .keyword {{ display: inline-block; background: #ccccd4; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px; }}
-    .read-more {{ display: inline-block; margin-top: 10px; color: #009999; text-decoration: none; font-weight: 600; }}
-    .read-more:hover {{ color: #00c1b6; }}
+    .read-more {{ display: inline-block; margin-top: 10px; color: #00c1b6; text-decoration: none; font-weight: 600; }}
+    .read-more:hover {{ text-decoration: underline; }}
     .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center; }}
     .stats {{ background: #000028; color: white; padding: 15px 20px; border-radius: 5px; margin-bottom: 25px; }}
     .stats-item {{ display: inline-block; margin-right: 20px; }}
@@ -92,11 +108,16 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
   </style>
 </head>
 <body>
-  <div class="header">
-    <img src="{logo_base64}" alt="Siemens" class="logo">
-    <h1>Dein News Digest - {date}</h1>
-    <div class="subtitle">KI-kuratierte Auswahl der wichtigsten Nachrichten</div>
-  </div>
+  <!--[if mso]>
+  <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
+  <tr><td>
+  <![endif]-->
+  <div class="wrapper" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div class="header">
+      <img src="{logo_url}" alt="Siemens" class="logo" width="180" style="max-width: 200px; height: auto;">
+      <h1 style="color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em;">Dein News Digest - {date}</h1>
+      <div class="subtitle" style="color: #9999a9; font-size: 0.9em; margin-top: 5px;">KI-kuratierte Auswahl der wichtigsten Nachrichten</div>
+    </div>
 """
     
     if article_count == 0:
@@ -176,15 +197,19 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
       {summary}
     </div>
     {keywords_html}
-    <a href="{url}" class="read-more" target="_blank">Weiterlesen →</a>
+    <a href="{url}" class="read-more" style="color: #00c1b6 !important; text-decoration: none !important; font-weight: 600;" target="_blank">Weiterlesen →</a>
   </div>
 """
 
-    html += f"""
-  <div class="footer">
-    <p>Dieser Digest wurde automatisch von deinem News AI Agent generiert.</p>
-    <p style="font-size: 0.8em;">Powered by KI-gestützte Kuration | {usecase}</p>
+    html += """
+    <div class="footer" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center;">
+      <p>Dieser Digest wurde automatisch von deinem AI News Agent generiert.</p>
+    </div>
   </div>
+  <!--[if mso]>
+  </td></tr>
+  </table>
+  <![endif]-->
 </body>
 </html>
 """
@@ -252,6 +277,63 @@ async def preview_digest(
     html = generate_digest_html(articles, total_candidates=total_candidates)
     
     return HTMLResponse(content=html)
+
+
+# Request/response models for shared digest rendering (single source of truth)
+class DigestRenderRequest(BaseModel):
+    """Payload for rendering digest HTML from a specific curated article set."""
+
+    articles: List[dict[str, Any]] = Field(default_factory=list)
+    total_candidates: int = 0
+    usecase: str = "daily_newsletter"
+    recipient_emails: List[str] = Field(default_factory=list)
+
+
+class DigestRenderResponse(BaseModel):
+    """Rendered digest payload used by n8n email sending."""
+
+    html_content: str
+    article_count: int
+    article_ids: List[str]
+    recipient_emails: List[str]
+    recipient_count: int
+    subject: str
+
+
+@router.post(
+    "/render",
+    response_model=DigestRenderResponse,
+    responses={**AUTH_RESPONSES},
+    summary="Render Digest HTML",
+    description=(
+        "Render digest HTML for a provided article list. "
+        "Used by n8n send workflow and serves as single source of truth "
+        "for digest email generation."
+    ),
+)
+async def render_digest(
+    payload: DigestRenderRequest,
+    api_key: str = Depends(verify_api_key),
+):
+    """Render digest email from curated items and return HTML + metadata."""
+    # Normalize article IDs to strings for downstream SQL update in n8n.
+    article_ids = [str(a.get("id")) for a in payload.articles if a.get("id")]
+    article_count = len(payload.articles)
+    html = generate_digest_html(
+        payload.articles,
+        total_candidates=payload.total_candidates if payload.total_candidates > 0 else article_count,
+        usecase=payload.usecase,
+    )
+    date = _format_digest_date()
+
+    return DigestRenderResponse(
+        html_content=html,
+        article_count=article_count,
+        article_ids=article_ids,
+        recipient_emails=payload.recipient_emails,
+        recipient_count=len(payload.recipient_emails),
+        subject=f"News Digest - {date} ({article_count} kuratierte Artikel)",
+    )
 
 
 # Response model for digest data
