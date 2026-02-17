@@ -195,7 +195,7 @@
             {
               "id": "has-articles",
               "leftValue": "={{ $json.article_count ?? (($json.articles || []).length) ?? 0 }}",
-              "rightValue": 0,
+              "rightValue": 4,
               "operator": {
                 "type": "number",
                 "operation": "gt"
@@ -222,7 +222,7 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ { \"articles\": ($json.articles || $json.curated_articles || []), \"total_candidates\": ($json.total_candidates || ($json.articles || []).length || ($json.curated_articles || []).length || 0), \"usecase\": ($json.usecase || \"daily_newsletter\"), \"recipient_emails\": ($(\"Collect Recipients\").first().json.recipient_emails || []) } }}",
+        "jsonBody": "={{ { \"articles\": ($json.articles || $json.curated_articles || []), \"total_candidates\": ($json.total_candidates || ($json.articles || []).length || ($json.curated_articles || []).length || 0), \"usecase\": ($json.usecase || \"daily_newsletter\"), \"tagline\": ($json.tagline || \"\"), \"recipient_emails\": ($(\"Collect Recipients\").first().json.recipient_emails || []) } }}",
         "options": {
           "response": {
             "response": {
@@ -335,7 +335,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// No articles curated - return info\nconst curatorResult = $input.first().json;\n\nreturn {\n  json: {\n    timestamp: new Date().toISOString(),\n    status: 'skipped',\n    reason: 'no_articles',\n    message: curatorResult.message || 'No articles found matching criteria',\n    total_candidates: curatorResult.total_candidates || 0\n  }\n};"
+        "jsCode": "// Not enough articles curated - return info\nconst curatorResult = $input.first().json;\nconst articleCount = curatorResult.article_count ?? (curatorResult.articles || []).length ?? 0;\n\nreturn {\n  json: {\n    timestamp: new Date().toISOString(),\n    status: 'skipped',\n    reason: 'insufficient_articles',\n    message: `Only ${articleCount} articles found (minimum 5 required)`,\n    article_count: articleCount,\n    total_candidates: curatorResult.total_candidates || 0\n  }\n};"
       },
       "id": "no-articles",
       "name": "No Articles",
@@ -348,7 +348,7 @@
     },
     {
       "parameters": {
-        "content": "## Send Curated Digest\n\n**⏰ Schedule:** Täglich um 8:00 Uhr\n\n### Ablauf:\n1. Empfänger aus DB laden\n2. News Curator aufrufen (daily_newsletter)\n3. Siemens-formatierte Email generieren\n4. An alle Empfänger senden\n5. Artikel als 'sent' markieren\n\n### Webhook:\nPOST /webhook/send-curated-digest\n\n### Curator-Einstellungen:\n- usecase: daily_newsletter\n- max_articles: 10\n- days_back: 1",
+        "content": "## Send Curated Digest\n\n**⏰ Schedule:** Täglich um 8:00 Uhr\n\n### Ablauf:\n1. Empfänger aus DB laden\n2. News Curator aufrufen (daily_newsletter)\n3. **Prüfen: mind. 5 Artikel** (sonst kein Versand)\n4. Siemens-formatierte Email generieren\n5. An alle Empfänger senden\n6. Artikel als 'sent' markieren\n\n### Webhook:\nPOST /webhook/send-curated-digest\n\n### Curator-Einstellungen:\n- usecase: daily_newsletter\n- max_articles: 10\n- days_back: 1\n- **min_articles: 5** (Versand-Schwelle)",
         "height": 496,
         "width": 280
       },
