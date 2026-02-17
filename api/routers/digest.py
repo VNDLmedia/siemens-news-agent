@@ -53,12 +53,18 @@ def _format_digest_date() -> str:
             return f"{weekdays[now.weekday()]}, {now.day}. {months[now.month]} {now.year}"
 
 
-def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str = "daily_newsletter") -> str:
+def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str = "daily_newsletter", tagline: str = "") -> str:
     """
     Generate HTML email content from articles.
     
     This replicates the exact HTML generation from the n8n workflow
     to ensure consistent preview with full corporate identity.
+    
+    Args:
+        articles: List of article dicts to include in the digest
+        total_candidates: Total number of candidate articles before curation
+        usecase: The usecase for the digest (e.g., "daily_newsletter")
+        tagline: Optional AI-generated tagline summarizing the day's themes
     """
     
     date = _format_digest_date()
@@ -75,7 +81,12 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
     
     # Logo hosted on CDN for email compatibility
     # TODO: Change to internal Siemens CDN after project handover
-    logo_url = "https://povlib.b-cdn.net/siemens/sie-logo-petrol-rgb.png"
+    logo_url = "https://povlib.b-cdn.net/siemens/sie-logo-white-rgb.png"
+    
+    # Dynamic header content
+    date_display = date
+    # Use provided tagline or fall back to default
+    header_tagline = tagline if tagline else "Dein News Digest"
     
     html = f"""
 <!DOCTYPE html>
@@ -84,60 +95,63 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #66667e; margin: 0; padding: 0; background-color: #f3f3f0; }}
-    .wrapper {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-    .header {{ margin-bottom: 30px; padding-top: 30px; padding-bottom: 30px; border-bottom: 2px solid #009999; }}
-    .logo {{ max-width: 200px; height: auto; margin-top: 20px; margin-bottom: 25px; }}
-    h1 {{ color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em; }}
-    .subtitle {{ color: #9999a9; font-size: 0.9em; margin-top: 5px; }}
-    .article {{ margin-bottom: 30px; padding: 20px; background: #ebebee; border-left: 4px solid #00c1b6; }}
+    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #000028; margin: 0; padding: 0; background-color: #ffffff; }}
+    .header {{ background-color: #000028; width: 100%; }}
+    .header-inner {{ max-width: 560px; margin: 0 auto; padding: 30px 20px 40px 20px; }}
+    .logo {{ max-width: 200px; height: auto; margin-top: 10px; margin-bottom: 35px; }}
+    .header-date {{ color: #b0b0c0; font-size: 0.9em; margin: 0 0 5px 0; }}
+    .header-tagline {{ color: #ffffff; font-weight: 400; margin: 0; font-size: 1.45em; line-height: 1.3; }}
+    .wrapper {{ max-width: 600px; margin: 0 auto; padding: 0; }}
+    .content {{ padding: 20px; }}
+    .article-link {{ display: block; text-decoration: none; color: inherit; margin-bottom: 25px; }}
+    .article-link:hover .article {{ box-shadow: 0 4px 12px rgba(0, 0, 40, 0.18); }}
+    .article {{ padding: 20px; background: #f3f3f0; border-left: 4px solid #00c1b6; border-radius: 5px; transition: box-shadow 0.2s ease; }}
     .article.high-priority {{ border-left-color: #00c1b6; }}
     .article.medium-priority {{ border-left-color: #00c1b6; }}
     .article h2 {{ margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em; }}
-    .article-meta {{ color: #9999a9; font-size: 0.85em; margin-bottom: 10px; }}
-    .summary {{ margin: 15px 0; color: #66667e; }}
+    .article-meta {{ color: #000028; font-size: 0.85em; margin-bottom: 10px; opacity: 0.7; }}
+    .summary {{ margin: 15px 0; color: #000028; }}
     .keywords {{ margin-top: 10px; }}
-    .keyword {{ display: inline-block; background: #ccccd4; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px; }}
-    .read-more {{ display: inline-block; margin-top: 10px; color: #00c1b6; text-decoration: none; font-weight: 600; }}
-    .read-more:hover {{ text-decoration: underline; }}
+    .keyword {{ display: inline-block; background: #dddde0; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px; }}
     .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center; }}
-    .stats {{ background: #000028; color: white; padding: 15px 20px; border-radius: 5px; margin-bottom: 25px; }}
-    .stats-item {{ display: inline-block; margin-right: 20px; }}
+    .stats {{ background: #000028; color: #ffffff; padding: 15px 20px; margin-bottom: 20px; border-radius: 5px; }}
+    .stats-item {{ display: inline-block; margin-right: 20px; color: #ffffff; }}
     .stats-number {{ font-size: 1.5em; font-weight: 700; color: #009999; }}
     .no-articles {{ text-align: center; padding: 40px; color: #9999a9; }}
   </style>
 </head>
 <body>
+  <div class="header" style="background-color: #000028; width: 100%;">
+    <!--[if mso]>
+    <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
+    <tr><td>
+    <![endif]-->
+    <div class="header-inner" style="max-width: 560px; margin: 0 auto; padding: 30px 20px 40px 20px;">
+      <img src="{logo_url}" alt="Siemens" class="logo" width="180" style="max-width: 200px; height: auto; margin-top: 10px; margin-bottom: 35px;">
+      <p class="header-date" style="color: #b0b0c0; font-size: 0.9em; margin: 0 0 5px 0;">{date_display}</p>
+      <h1 class="header-tagline" style="color: #ffffff; font-weight: 400; margin: 0; font-size: 1.45em; line-height: 1.3;">{header_tagline}</h1>
+    </div>
+    <!--[if mso]>
+    </td></tr>
+    </table>
+    <![endif]-->
+  </div>
   <!--[if mso]>
   <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
   <tr><td>
   <![endif]-->
-  <div class="wrapper" style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div class="header">
-      <img src="{logo_url}" alt="Siemens" class="logo" width="180" style="max-width: 200px; height: auto;">
-      <h1 style="color: #000028; font-weight: 700; margin: 0; padding-top: 10px; font-size: 1.5em;">Dein News Digest - {date}</h1>
-      <div class="subtitle" style="color: #9999a9; font-size: 0.9em; margin-top: 5px;">KI-kuratierte Auswahl der wichtigsten Nachrichten</div>
-    </div>
+  <div class="wrapper" style="max-width: 600px; margin: 0 auto;">
+    <div class="content" style="padding: 20px;">
 """
     
     if article_count == 0:
         html += """
-  <div class="no-articles">
-    <p>Keine Artikel zum Anzeigen.</p>
-    <p>Es gibt aktuell keine ungesendeten Artikel mit Zusammenfassungen.</p>
-  </div>
+    <div class="no-articles" style="text-align: center; padding: 40px; color: #9999a9;">
+      <p>Keine Artikel zum Anzeigen.</p>
+      <p>Es gibt aktuell keine ungesendeten Artikel mit Zusammenfassungen.</p>
+    </div>
 """
     else:
-        # Stats box (matching workflow)
-        html += f"""
-  <div class="stats">
-    <span class="stats-item"><span class="stats-number">{article_count}</span> Artikel ausgewählt</span>
-    <span class="stats-item">aus <span class="stats-number">{total_candidates if total_candidates > 0 else article_count}</span> Kandidaten</span>
-  </div>
-  
-  <p>Hier sind deine {article_count} wichtigsten Nachrichten von heute, intelligent kuratiert für maximale Relevanz und Vielfalt:</p>
-"""
-        
         for article in articles:
             # Format published date
             published_date = "Datum unbekannt"
@@ -173,37 +187,34 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
                 priority_class = "medium-priority"
             
             # Build keywords/topics display (max 5 tags)
-            keywords_html = ""
             topics = article.get("topics") or []
             keywords = article.get("keywords") or []
             all_tags = (topics + keywords)[:5]
-            if all_tags:
-                tags_html = "".join([f'<span class="keyword">{html_escape.escape(str(tag))}</span>' for tag in all_tags])
-                keywords_html = f'<div class="keywords">{tags_html}</div>'
-            
-            # Priority badge
-            priority_badge = get_priority_badge(priority)
+            tags_html = "".join([f'<span style="display: inline-block; background: #dddde0; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px;">{html_escape.escape(str(tag))}</span>' for tag in all_tags]) if all_tags else ""
+            keywords_html = f'<div style="margin-top: 15px;">{tags_html}</div>' if tags_html else ""
             
             # Category in meta
             category_str = f" | {category}" if category else ""
             
             html += f"""
-  <div class="article {priority_class}">
-    <h2>{title}{priority_badge}</h2>
-    <div class="article-meta">
-      {published_date} | {source}{category_str}
-    </div>
-    <div class="summary">
-      {summary}
-    </div>
-    {keywords_html}
-    <a href="{url}" class="read-more" style="color: #00c1b6 !important; text-decoration: none !important; font-weight: 600;" target="_blank">Weiterlesen →</a>
-  </div>
+    <a href="{url}" class="article-link" style="display: block; text-decoration: none; color: inherit; margin-bottom: 25px;" target="_blank">
+      <div class="article {priority_class}" style="padding: 20px; background: #f3f3f0; border-left: 4px solid #00c1b6; border-radius: 5px;">
+        <h2 style="margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em;">{title}</h2>
+        <div class="article-meta" style="color: #000028; font-size: 0.85em; margin-bottom: 10px; opacity: 0.7;">
+          {published_date} | {source}{category_str}
+        </div>
+        <div class="summary" style="margin: 15px 0; color: #000028;">
+          {summary}
+        </div>
+        {keywords_html}
+      </div>
+    </a>
 """
 
     html += """
-    <div class="footer" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center;">
-      <p>Dieser Digest wurde automatisch von deinem AI News Agent generiert.</p>
+      <div class="footer" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center;">
+        <p>Dieser Digest wurde automatisch von deinem AI News Agent generiert.</p>
+      </div>
     </div>
   </div>
   <!--[if mso]>
@@ -286,6 +297,7 @@ class DigestRenderRequest(BaseModel):
     articles: List[dict[str, Any]] = Field(default_factory=list)
     total_candidates: int = 0
     usecase: str = "daily_newsletter"
+    tagline: str = Field(default="", description="AI-generated tagline summarizing the day's key themes")
     recipient_emails: List[str] = Field(default_factory=list)
 
 
@@ -323,6 +335,7 @@ async def render_digest(
         payload.articles,
         total_candidates=payload.total_candidates if payload.total_candidates > 0 else article_count,
         usecase=payload.usecase,
+        tagline=payload.tagline,
     )
     date = _format_digest_date()
 
