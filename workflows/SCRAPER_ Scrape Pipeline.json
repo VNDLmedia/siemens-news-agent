@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   ├──► X API Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All (wartet auf alle drei)\n                       │\n                       ▼\n               Filter Valid (URL vorhanden?)\n                       │\n                       ▼\n               Check Existing URLs (DB)\n                       │\n                       ▼\n               Filter New Only (Dedupe)\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- Schedule: Alle 15 Min\n- Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- SCRAPER: X API\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel\n\n### Dedupe\nNur neue Artikel werden an GPT gesendet!",
+        "content": "## Scrape Pipeline (Orchestrator)\n\n**Zweck:** Koordiniert alle Scraper und verarbeitet Artikel.\n\n### Ablauf\n```\nTrigger\n   │\n   ├──► Google News Scraper (parallel)\n   │           │\n   ├──► RSS Feeds Scraper (parallel)\n   │           │\n   ├──► X API Scraper (parallel)\n   │           │\n   └───────────┴──► Merge All (wartet auf alle drei)\n                       │\n                       ▼\n               Filter Valid (URL vorhanden?)\n                       │\n                       ▼\n               Check Existing URLs (DB)\n                       │\n                       ▼\n               Filter New Only (Dedupe)\n                       │\n                       ▼\n               Normalize + Analyze\n                    (GPT-4o-mini)\n                       │\n                       ▼\n             Restore Image URLs\n               (re-join pre-GPT)\n                       │\n                       ▼\n                   DB Insert\n                 (19 Spalten)\n```\n\n### Trigger\n- Schedule: Alle 15 Min\n- Webhook: POST /scrape-pipeline\n\n### Sub-Workflows\n- SCRAPER: Google News\n- SCRAPER: RSS Feeds\n- SCRAPER: X API\n- Normalize Articles\n\n### DB Tabelle\n`articles` - Alle normalisierten Artikel\n\n### Dedupe\nNur neue Artikel werden an GPT gesendet!",
         "height": 560,
         "width": 320
       },
@@ -253,7 +253,20 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build a fully escaped SQL statement per item to avoid pg parameter protocol issues\nfunction sanitizeText(value) {\n  return String(value ?? '')\n    // PostgreSQL rejects NUL bytes in text values and query payloads\n    .replace(/\\u0000/g, '')\n    // Remove other control chars except tab/newline/carriage return\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, ' ')\n    .trim();\n}\n\nfunction sqlString(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const escaped = sanitizeText(value)\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/'/g, \"''\");\n  return `'${escaped}'`;\n}\n\nfunction sqlNumber(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const num = Number(value);\n  return Number.isFinite(num) ? String(num) : 'NULL';\n}\n\nfunction sqlTimestamp(value) {\n  if (!value) return 'NULL';\n  return `${sqlString(value)}::timestamp`;\n}\n\nfunction sqlTextArray(arr) {\n  if (!Array.isArray(arr) || arr.length === 0) return \"'{}'::text[]\";\n  const escaped = arr.map(v => {\n    const val = sanitizeText(v)\n      .replace(/\\\\/g, '\\\\\\\\')\n      .replace(/\"/g, '\\\\\"');\n    return `\"${val}\"`;\n  });\n  return `${sqlString(`{${escaped.join(',')}}`)}::text[]`;\n}\n\nreturn $input.all().map(item => {\n  const d = item.json;\n\n  const insertSql = `INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, processed, sent) VALUES (${sqlString(d.url)}, ${sqlString(d.title)}, ${sqlString(d.content)}, ${sqlString(d.source)}, ${sqlString(d.source_type)}, ${sqlTimestamp(d.published_at)}, ${sqlString(d.summary)}, ${sqlString(d.sentiment)}, ${sqlNumber(d.sentiment_score)}, ${sqlString(d.priority)}, ${sqlString(d.priority_reason)}, ${sqlTextArray(d.topics)}, ${sqlTextArray(d.keywords)}, ${sqlTextArray(d.companies)}, ${sqlTextArray(d.persons)}, ${sqlTextArray(d.regions)}, ${sqlString(d.language)}, ${sqlString(d.category)}, ${sqlTextArray(d.relevance_match)}, TRUE, FALSE) ON CONFLICT (url) DO NOTHING`;\n\n  return {\n    json: {\n      ...d,\n      insert_sql: insertSql,\n    },\n  };\n});"
+        "jsCode": "// Re-attach image_url from scrapers. image_url is lost at Merge All (schema\n// differences between scrapers) and at Normalize (GPT replaces items). We recover\n// from the RSS Feeds scraper output directly, which runs before the merge.\nconst rssItems = $('Call RSS Feeds Scraper').all();\nconst imageUrlByUrl = {};\nfor (const item of rssItems) {\n  const j = item.json;\n  if (j.url && (j.image_url != null && j.image_url !== '')) {\n    imageUrlByUrl[j.url] = j.image_url;\n  }\n}\n\nreturn $input.all().map(item => {\n  const d = item.json;\n  return {\n    json: {\n      ...d,\n      image_url: imageUrlByUrl[d.url] || d.image_url || null,\n    },\n  };\n});"
+      },
+      "id": "f7e8a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a4b",
+      "name": "Restore Image URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a fully escaped SQL statement per item to avoid pg parameter protocol issues\nfunction sanitizeText(value) {\n  return String(value ?? '')\n    // PostgreSQL rejects NUL bytes in text values and query payloads\n    .replace(/\\u0000/g, '')\n    // Remove other control chars except tab/newline/carriage return\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, ' ')\n    .trim();\n}\n\nfunction sqlString(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const escaped = sanitizeText(value)\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/'/g, \"''\");\n  return `'${escaped}'`;\n}\n\nfunction sqlNumber(value) {\n  if (value === null || value === undefined || value === '') return 'NULL';\n  const num = Number(value);\n  return Number.isFinite(num) ? String(num) : 'NULL';\n}\n\nfunction sqlTimestamp(value) {\n  if (!value) return 'NULL';\n  return `${sqlString(value)}::timestamp`;\n}\n\nfunction sqlTextArray(arr) {\n  if (!Array.isArray(arr) || arr.length === 0) return \"'{}'::text[]\";\n  const escaped = arr.map(v => {\n    const val = sanitizeText(v)\n      .replace(/\\\\/g, '\\\\\\\\')\n      .replace(/\"/g, '\\\\\"');\n    return `\"${val}\"`;\n  });\n  return `${sqlString(`{${escaped.join(',')}}`)}::text[]`;\n}\n\nreturn $input.all().map(item => {\n  const d = item.json;\n\n  const insertSql = `INSERT INTO articles (url, title, content, source, source_type, published_at, summary, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, relevance_match, image_url, processed, sent) VALUES (${sqlString(d.url)}, ${sqlString(d.title)}, ${sqlString(d.content)}, ${sqlString(d.source)}, ${sqlString(d.source_type)}, ${sqlTimestamp(d.published_at)}, ${sqlString(d.summary)}, ${sqlString(d.sentiment)}, ${sqlNumber(d.sentiment_score)}, ${sqlString(d.priority)}, ${sqlString(d.priority_reason)}, ${sqlTextArray(d.topics)}, ${sqlTextArray(d.keywords)}, ${sqlTextArray(d.companies)}, ${sqlTextArray(d.persons)}, ${sqlTextArray(d.regions)}, ${sqlString(d.language)}, ${sqlString(d.category)}, ${sqlTextArray(d.relevance_match)}, ${sqlString(d.image_url)}, TRUE, FALSE) ON CONFLICT (url) DO NOTHING`;\n\n  return {\n    json: {\n      ...d,\n      insert_sql: insertSql,\n    },\n  };\n});"
       },
       "id": "a1b2c3d4-prep-db-node-id",
       "name": "Prepare for DB",
@@ -363,7 +376,7 @@
           {
             "node": "Merge All",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -374,7 +387,7 @@
           {
             "node": "Merge All",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -435,6 +448,17 @@
       ]
     },
     "Normalize + Analyze": {
+      "main": [
+        [
+          {
+            "node": "Restore Image URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Image URLs": {
       "main": [
         [
           {

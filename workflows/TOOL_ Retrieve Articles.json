@@ -68,7 +68,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, url, title, summary, source, source_type, published_at, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category FROM articles WHERE processed = TRUE AND fetched_at >= NOW() - INTERVAL '1 day' * $1 AND ($2 = '' OR language = $2) AND ($3 = '' OR category = $3) AND ($4 = '' OR priority = $4) AND ($5 = '' OR title ILIKE '%' || $5 || '%' OR summary ILIKE '%' || $5 || '%' OR $5 = ANY(topics) OR $5 = ANY(keywords) OR $5 = ANY(companies) OR $5 = ANY(persons)) ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, published_at DESC LIMIT $6",
+        "query": "SELECT id, url, title, summary, source, source_type, published_at, sentiment, sentiment_score, priority, priority_reason, topics, keywords, companies, persons, regions, language, category, image_url FROM articles WHERE processed = TRUE AND fetched_at >= NOW() - INTERVAL '1 day' * $1 AND ($2 = '' OR language = $2) AND ($3 = '' OR category = $3) AND ($4 = '' OR priority = $4) AND ($5 = '' OR title ILIKE '%' || $5 || '%' OR summary ILIKE '%' || $5 || '%' OR $5 = ANY(topics) OR $5 = ANY(keywords) OR $5 = ANY(companies) OR $5 = ANY(persons)) ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, published_at DESC LIMIT $6",
         "options": {
           "queryReplacement": "={{ $json.days_back }},={{ $json.language }},={{ $json.category }},={{ $json.priority }},={{ $json.topic }},={{ $json.limit }}"
         }

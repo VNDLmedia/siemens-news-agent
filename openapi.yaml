@@ -1978,6 +1978,11 @@ components:
             type: array
           - type: 'null'
           title: Relevance Match
+        image_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Image Url
         processed:
           type: boolean
           title: Processed
@@ -2146,6 +2151,11 @@ components:
           type: string
           title: Usecase
           default: daily_newsletter
+        tagline:
+          type: string
+          title: Tagline
+          description: AI-generated tagline summarizing the day's key themes
+          default: ''
         recipient_emails:
           items:
             type: string

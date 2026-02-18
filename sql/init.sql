@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS articles (
     language TEXT,
     category TEXT,
     relevance_match TEXT[],
+    image_url TEXT,
     processed BOOLEAN NOT NULL DEFAULT FALSE,
     sent BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

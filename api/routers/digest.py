@@ -88,68 +88,36 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
     # Use provided tagline or fall back to default
     header_tagline = tagline if tagline else "Dein News Digest"
     
+    # Use table-based layout with inline styles for consistent email client rendering.
+    # Many clients strip CSS or apply it differently; tables + inline styles are most reliable.
+    GUTTER = 20  # px - same horizontal padding for header and content
     html = f"""
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {{ font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #000028; margin: 0; padding: 0; background-color: #ffffff; }}
-    .header {{ background-color: #000028; width: 100%; }}
-    .header-inner {{ max-width: 560px; margin: 0 auto; padding: 30px 20px 40px 20px; }}
-    .logo {{ max-width: 200px; height: auto; margin-top: 10px; margin-bottom: 35px; }}
-    .header-date {{ color: #b0b0c0; font-size: 0.9em; margin: 0 0 5px 0; }}
-    .header-tagline {{ color: #ffffff; font-weight: 400; margin: 0; font-size: 1.45em; line-height: 1.3; }}
-    .wrapper {{ max-width: 600px; margin: 0 auto; padding: 0; }}
-    .content {{ padding: 20px; }}
-    .article-link {{ display: block; text-decoration: none; color: inherit; margin-bottom: 25px; }}
-    .article-link:hover .article {{ box-shadow: 0 4px 12px rgba(0, 0, 40, 0.18); }}
-    .article {{ padding: 20px; background: #f3f3f0; border-left: 4px solid #00c1b6; border-radius: 5px; transition: box-shadow 0.2s ease; }}
-    .article.high-priority {{ border-left-color: #00c1b6; }}
-    .article.medium-priority {{ border-left-color: #00c1b6; }}
-    .article h2 {{ margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em; }}
-    .article-meta {{ color: #000028; font-size: 0.85em; margin-bottom: 10px; opacity: 0.7; }}
-    .summary {{ margin: 15px 0; color: #000028; }}
-    .keywords {{ margin-top: 10px; }}
-    .keyword {{ display: inline-block; background: #dddde0; color: #000028; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; margin-right: 5px; margin-bottom: 5px; }}
-    .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center; }}
-    .stats {{ background: #000028; color: #ffffff; padding: 15px 20px; margin-bottom: 20px; border-radius: 5px; }}
-    .stats-item {{ display: inline-block; margin-right: 20px; color: #ffffff; }}
-    .stats-number {{ font-size: 1.5em; font-weight: 700; color: #009999; }}
-    .no-articles {{ text-align: center; padding: 40px; color: #9999a9; }}
-  </style>
 </head>
-<body>
-  <div class="header" style="background-color: #000028; width: 100%;">
-    <!--[if mso]>
-    <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
-    <tr><td>
-    <![endif]-->
-    <div class="header-inner" style="max-width: 560px; margin: 0 auto; padding: 30px 20px 40px 20px;">
-      <img src="{logo_url}" alt="Siemens" class="logo" width="180" style="max-width: 200px; height: auto; margin-top: 10px; margin-bottom: 35px;">
-      <p class="header-date" style="color: #b0b0c0; font-size: 0.9em; margin: 0 0 5px 0;">{date_display}</p>
-      <h1 class="header-tagline" style="color: #ffffff; font-weight: 400; margin: 0; font-size: 1.45em; line-height: 1.3;">{header_tagline}</h1>
-    </div>
-    <!--[if mso]>
-    </td></tr>
-    </table>
-    <![endif]-->
-  </div>
-  <!--[if mso]>
-  <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
-  <tr><td>
-  <![endif]-->
-  <div class="wrapper" style="max-width: 600px; margin: 0 auto;">
-    <div class="content" style="padding: 20px;">
+<body style="margin:0; padding:0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #000028; background-color: #000028;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #000028;">
+<tr><td align="center" style="padding: 0;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center">
+  <!-- Header -->
+  <tr><td style="background-color: #000028; padding: 50px {GUTTER}px 40px {GUTTER}px;">
+    <img src="{logo_url}" alt="Siemens" width="144" style="display: block; margin: 0 0 35px 0;">
+    <p style="margin: 0 0 5px 0; color: #b0b0c0; font-size: 0.9em;">{date_display}</p>
+    <h1 style="margin: 0; color: #ffffff; font-weight: 400; font-size: 1.45em; line-height: 1.3;">{header_tagline}</h1>
+  </td></tr>
+  <!-- Content wrapper - same horizontal padding as header -->
+  <tr><td style="padding: 20px {GUTTER}px 20px {GUTTER}px;">
 """
     
     if article_count == 0:
-        html += """
-    <div class="no-articles" style="text-align: center; padding: 40px; color: #9999a9;">
-      <p>Keine Artikel zum Anzeigen.</p>
-      <p>Es gibt aktuell keine ungesendeten Artikel mit Zusammenfassungen.</p>
-    </div>
+        html += f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding: 40px; color: #b0b0c0; font-size: 0.9em;">
+      <p style="margin: 0 0 10px 0;">Keine Artikel zum Anzeigen.</p>
+      <p style="margin: 0;">Es gibt aktuell keine ungesendeten Artikel mit Zusammenfassungen.</p>
+    </td></tr></table>
 """
     else:
         for article in articles:
@@ -195,32 +163,43 @@ def generate_digest_html(articles: list, total_candidates: int = 0, usecase: str
             
             # Category in meta
             category_str = f" | {category}" if category else ""
-            
+
+            # Article image (only when available) - full width above content
+            raw_image_url = article.get("image_url")
+            if raw_image_url:
+                safe_img_url = html_escape.escape(str(raw_image_url))
+                image_block = (
+                    '<tr><td style="padding: 0; line-height: 0;">'
+                    f'<img src="{safe_img_url}" alt="" width="560" style="width: 100%; max-width: 560px; height: auto; max-height: 320px; object-fit: cover; display: block; margin: 0; padding: 0; border: 0;" '
+                    'onerror="this.parentNode.parentNode.style.display=\'none\'">'
+                    '</td></tr>'
+                )
+            else:
+                image_block = ""
+
             html += f"""
-    <a href="{url}" class="article-link" style="display: block; text-decoration: none; color: inherit; margin-bottom: 25px;" target="_blank">
-      <div class="article {priority_class}" style="padding: 20px; background: #f3f3f0; border-left: 4px solid #00c1b6; border-radius: 5px;">
-        <h2 style="margin-top: 0; color: #000028; font-weight: 700; font-size: 1.1em;">{title}</h2>
-        <div class="article-meta" style="color: #000028; font-size: 0.85em; margin-bottom: 10px; opacity: 0.7;">
-          {published_date} | {source}{category_str}
-        </div>
-        <div class="summary" style="margin: 15px 0; color: #000028;">
-          {summary}
-        </div>
-        {keywords_html}
-      </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 25px; background: #f3f3f0;">
+    <tr><td colspan="1" style="height: 8px; background-color: #00c1b6; padding: 0; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+    {image_block}
+    <tr><td style="padding: 20px;">
+    <a href="{url}" style="text-decoration: none; color: inherit; display: block;" target="_blank">
+    <h2 style="margin: 0 0 10px 0; color: #000028; font-weight: 700; font-size: 1.1em;">{title}</h2>
+    <p style="margin: 0 0 15px 0; color: #666666; font-size: 0.85em;">{published_date} | {source}{category_str}</p>
+    <p style="margin: 0 0 15px 0; color: #000028;">{summary}</p>
+    {keywords_html}
     </a>
+    </td></tr>
+    </table>
 """
 
-    html += """
-      <div class="footer" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccccd4; color: #9999a9; font-size: 0.85em; text-align: center;">
-        <p>Dieser Digest wurde automatisch von deinem AI News Agent generiert.</p>
-      </div>
-    </div>
-  </div>
-  <!--[if mso]>
+    html += f"""
   </td></tr>
-  </table>
-  <![endif]-->
+  <tr><td style="padding: 40px {GUTTER}px 20px {GUTTER}px; border-top: 1px solid #333355; color: #b0b0c0; font-size: 0.85em; text-align: center;">
+    <p style="margin: 0;">Dieser Digest wurde automatisch von deinem AI News Agent generiert.</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>
 """
@@ -257,8 +236,8 @@ async def preview_digest(
     if include_sent:
         # All processed articles
         query = """
-            SELECT id, url, title, content, source, source_type, published_at, 
-                   summary, priority, topics, keywords, category, fetched_at, sent
+            SELECT id, url, title, content, source, source_type, published_at,
+                   summary, priority, topics, keywords, category, image_url, fetched_at, sent
             FROM articles 
             WHERE processed = TRUE 
             ORDER BY fetched_at DESC
@@ -269,8 +248,8 @@ async def preview_digest(
     else:
         # Only unsent articles (what would actually be emailed)
         query = """
-            SELECT id, url, title, content, source, source_type, published_at, 
-                   summary, priority, topics, keywords, category, fetched_at, sent
+            SELECT id, url, title, content, source, source_type, published_at,
+                   summary, priority, topics, keywords, category, image_url, fetched_at, sent
             FROM articles 
             WHERE processed = TRUE AND sent = FALSE 
             ORDER BY fetched_at DESC
@@ -331,8 +310,33 @@ async def render_digest(
     # Normalize article IDs to strings for downstream SQL update in n8n.
     article_ids = [str(a.get("id")) for a in payload.articles if a.get("id")]
     article_count = len(payload.articles)
+
+    # Enrich articles with image_url from DB if missing (Curator/Agent may drop it).
+    # This ensures images appear in the email regardless of upstream payload.
+    articles_to_render = []
+    ids_to_enrich = []
+    for a in payload.articles:
+        art = dict(a)  # mutable copy
+        if a.get("id") and not (a.get("image_url") or "").strip():
+            ids_to_enrich.append(a.get("id"))
+        articles_to_render.append(art)
+
+    if ids_to_enrich:
+        pool = await get_pool()
+        # Normalize IDs to strings for uuid[] (handles UUID objects from DB, strings from JSON)
+        uuid_strs = [str(i) for i in ids_to_enrich]
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, image_url FROM articles WHERE id = ANY($1::uuid[])",
+                uuid_strs,
+            )
+        url_by_id = {str(r["id"]): r["image_url"] for r in rows if r.get("image_url")}
+        for art in articles_to_render:
+            if art.get("id") and not (art.get("image_url") or "").strip():
+                art["image_url"] = url_by_id.get(str(art["id"]))
+
     html = generate_digest_html(
-        payload.articles,
+        articles_to_render,
         total_candidates=payload.total_candidates if payload.total_candidates > 0 else article_count,
         usecase=payload.usecase,
         tagline=payload.tagline,

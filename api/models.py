@@ -248,6 +248,7 @@ class Article(BaseModel):
     language: Optional[str]
     category: Optional[str]
     relevance_match: Optional[List[str]]
+    image_url: Optional[str] = None
     processed: bool
     sent: bool
     created_at: datetime

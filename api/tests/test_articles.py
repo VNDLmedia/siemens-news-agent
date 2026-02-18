@@ -24,6 +24,15 @@ class TestListArticlesContract:
         assert isinstance(data, list)
 
     @pytest.mark.asyncio
+    async def test_list_articles_have_image_url_field(self, client, valid_headers):
+        """Contract: Articles expose image_url field (nullable)."""
+        response = await client.get("/api/articles", headers=valid_headers)
+        data = response.json()
+        for article in data:
+            assert "image_url" in article, "Article must expose image_url field"
+            assert article["image_url"] is None or isinstance(article["image_url"], str)
+
+    @pytest.mark.asyncio
     async def test_list_articles_with_filters(self, client, valid_headers):
         """Contract: List articles accepts filter parameters."""
         response = await client.get(
@@ -84,6 +93,18 @@ class TestGetArticleContract:
         response = await client.get(f"/api/articles/{created_article['id']}", headers=valid_headers)
         assert response.status_code == 200
         assert response.json()["id"] == created_article["id"]
+
+    @pytest.mark.asyncio
+    async def test_get_existing_article_has_image_url_field(self, client, valid_headers, created_article):
+        """Contract: Single article response includes image_url field (nullable)."""
+        if created_article is None:
+            pytest.skip("No articles in database to test")
+
+        response = await client.get(f"/api/articles/{created_article['id']}", headers=valid_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "image_url" in data, "Article detail must expose image_url field"
+        assert data["image_url"] is None or isinstance(data["image_url"], str)
 
 
 class TestUpdateArticleContract:

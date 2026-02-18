@@ -54,6 +54,64 @@ class TestDigestPreviewContract:
         assert "AI News Agent" in html
 
 
+class TestDigestRenderContract:
+    """Contract: POST /api/digest/render renders HTML from article list."""
+
+    @pytest.mark.asyncio
+    async def test_render_returns_html_with_image(self, client, valid_headers):
+        """Contract: Render includes <img> tag when article has image_url."""
+        payload = {
+            "articles": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "url": "https://example.com/article",
+                    "title": "Test Article With Image",
+                    "source": "Test Source",
+                    "summary": "A test summary.",
+                    "priority": "high",
+                    "image_url": "https://example.com/image.jpg",
+                }
+            ],
+            "total_candidates": 1,
+            "usecase": "daily_newsletter",
+            "tagline": "Test Tagline",
+            "recipient_emails": []
+        }
+        response = await client.post("/api/digest/render", json=payload, headers=valid_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "html_content" in data
+        assert "https://example.com/image.jpg" in data["html_content"]
+
+    @pytest.mark.asyncio
+    async def test_render_no_image_tag_when_image_url_absent(self, client, valid_headers):
+        """Contract: Render omits <img> block when article has no image_url."""
+        payload = {
+            "articles": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000002",
+                    "url": "https://example.com/article-no-image",
+                    "title": "Test Article Without Image",
+                    "source": "Test Source",
+                    "summary": "A test summary without image.",
+                    "priority": "medium",
+                }
+            ],
+            "total_candidates": 1,
+            "usecase": "daily_newsletter",
+            "tagline": "",
+            "recipient_emails": []
+        }
+        response = await client.post("/api/digest/render", json=payload, headers=valid_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["article_count"] == 1
+        # No stray <img> tag from article content (logo is allowed)
+        html = data["html_content"]
+        # Logo img will be there; but no article image block with object-fit
+        assert "object-fit: cover" not in html
+
+
 class TestDigestDataContract:
     """Contract: GET /api/digest/data returns JSON data."""
 
